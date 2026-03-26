@@ -31,14 +31,13 @@ from utils.time_utils import (
 )
 from engines.telegram_alerts import TelegramAlerts
 
-self.telegram = TelegramAlerts()
-
 logger = setup_logger("WhaleHQ-Main")
 
 
 class WhaleHQEngine:
 
     def __init__(self):
+        self.telegram = TelegramAlerts()
         # ── Core Engines ──────────────────────────
         self.market_classifier = MarketStateClassifier()
         self.iae_engine = IAEEngine()
@@ -77,6 +76,13 @@ class WhaleHQEngine:
         logger.info("=" * 60)
         logger.info("WHALEHQ v6.0 — ENGINE STARTED")
         logger.info("=" * 60)
+
+        session_info = self.expiry_manager.get_session_info()
+        self.telegram.send_system_startup(
+            capital=config.CAPITAL,
+            expiry=session_info["expiry_formatted"],
+            dte=session_info["dte"]
+        )
 
         while True:
             try:
@@ -337,6 +343,22 @@ class WhaleHQEngine:
             f"{'─'*40}"
         )
 
+        self.telegram.send_iae_score(
+            iae_score=self.ib_iae.total_score,
+            market_state=self.market_state.value,
+            direction=self.ib_direction.value,
+            breakdown={
+                "isIb": self.ib_iae.is_ib_score,
+                "pureOI": self.ib_iae.pure_oi_score,
+                "oiDelta": self.ib_iae.oi_delta_score,
+                "volX": self.ib_iae.volx_score,
+                "gamma": self.ib_iae.gamma_score,
+                "mp": self.ib_iae.mp_acceptance_score,
+                "tre": self.ib_iae.tre_score,
+            },
+            can_trade=self.ib_iae.can_trade()
+        )
+
         # Attempt IB entry immediately
         self._attempt_entry(chain, window="IB", min_iae=4)
         self.ib_scored = True
@@ -487,6 +509,22 @@ class WhaleHQEngine:
                 f"  T1: ₹{signal.t1_target} | "
                 f"T2: ₹{signal.t2_target} | "
                 f"SL: ₹{signal.sl_premium}"
+            )
+
+            self.telegram.send_trade_entry(
+                direction=signal.direction.value,
+                option_type=signal.option_type,
+                strike=signal.strike,
+                premium=signal.entry_premium,
+                lots=signal.lots,
+                iae_score=signal.iae_score,
+                market_state=signal.market_state.value,
+                t1_target=signal.t1_target,
+                t2_target=signal.t2_target,
+                sl_premium=signal.sl_premium,
+                capital_deployed=signal.total_premium_deployed,
+                risk_amount=signal.risk_amount,
+                entry_window=signal.entry_window
             )
         else:
             # Handle order rejection
@@ -647,6 +685,53 @@ class WhaleHQEngine:
             f"P&L: {'+' if pnl >= 0 else ''}₹{pnl:,.0f}"
         )
 
+        if action == ExitAction.EXIT_T1:
+            self.telegram.send_t1_exit(
+                direction=signal.direction.value,
+                option_type=signal.option_type,
+                strike=signal.strike,
+                entry_premium=signal.entry_premium,
+                exit_premium=current_premium,
+                lots=exit_cfg["lots"],
+                pnl=pnl
+            )
+        elif action == ExitAction.EXIT_T2:
+            self.telegram.send_t2_exit(
+                direction=signal.direction.value,
+                option_type=signal.option_type,
+                strike=signal.strike,
+                entry_premium=signal.entry_premium,
+                exit_premium=current_premium,
+                lots=exit_cfg["lots"],
+                pnl=pnl,
+                t3_trail_sl=position.t3_trail_sl
+            )
+        elif action == ExitAction.EXIT_T3_TRAIL:
+            self.telegram.send_t3_trail_exit(
+                direction=signal.direction.value,
+                option_type=signal.option_type,
+                strike=signal.strike,
+                entry_premium=signal.entry_premium,
+                peak_premium=position.t3_peak_premium,
+                exit_premium=current_premium,
+                lots=exit_cfg["lots"],
+                t3_pnl=pnl,
+                total_pnl=self.session_manager.state.daily_pnl
+            )
+        elif action == ExitAction.EXIT_ALL_SL:
+            self.telegram.send_sl_hit(
+                direction=signal.direction.value,
+                option_type=signal.option_type,
+                strike=signal.strike,
+                entry_premium=signal.entry_premium,
+                exit_premium=current_premium,
+                lots=exit_cfg["lots"],
+                pnl=pnl,
+                sl_type="Premium SL -32%",
+                consecutive_sl=\
+                    self.session_manager.state.consecutive_sl_hits
+            )
+
         return pnl
 
     # ─────────────────────────────────────────────
@@ -779,6 +864,20 @@ class WhaleHQEngine:
 
         # Update EOD capital
         self.session_manager.update_capital_end_of_day()
+
+        self.telegram.send_daily_summary(
+            date=now_ist().strftime("%d %b %Y"),
+            trades=self.session_manager.state.trades_today,
+            wins=self.session_manager.state.consecutive_wins,
+            losses=self.session_manager.state.consecutive_sl_hits,
+            total_pnl=self.session_manager.state.daily_pnl,
+            capital_start=config.CAPITAL,
+            capital_end=self.session_manager.state.capital,
+            market_state=self.market_state.value,
+            iae_score=(
+                self.ib_iae.total_score if self.ib_iae else 0
+            )
+        )
 
     # ─────────────────────────────────────────────
     # HELPER METHODS
