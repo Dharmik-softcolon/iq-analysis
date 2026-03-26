@@ -21,6 +21,34 @@ class OrderService {
     }
 
     async _processDirectionalEntry(signalData, userId) {
+        // ── Step 1: Validate signal ────────────────
+        const validation = signalService.validateSignal(signalData);
+        if (!validation.valid) {
+            logger.error(`Signal validation failed: ${validation.errors.join(", ")}`);
+            return { success: false, errors: validation.errors };
+        }
+
+        // ── Step 2: Check duplicate ────────────────
+        const isDuplicate = await signalService.isDuplicateSignal(
+            signalData.signalId
+        );
+        if (isDuplicate) {
+            logger.warn(`Duplicate signal ignored: ${signalData.signalId}`);
+            return { success: false, error: "Duplicate signal" };
+        }
+
+        // ── Step 3: Check capital limits ──────────
+        const capitalCheck = await signalService.checkCapitalLimits(
+            signalData, userId
+        );
+        if (!capitalCheck.allowed) {
+            logger.warn(`Capital limit blocked: ${capitalCheck.reason}`);
+            return { success: false, error: capitalCheck.reason };
+        }
+
+        // ── Broadcast to UI ────────────────────────
+        signalService.broadcastSignalReceived(signalData);
+
         const {
             signalId,
             direction,
@@ -95,15 +123,30 @@ class OrderService {
             }],
         });
 
+        // Save order record
+        await signalService.saveOrderRecord({
+            orderId: orderResult.orderId,
+            userId,
+            tradeId: trade._id,
+            signalId,
+            tradingsymbol,
+            exchange: "NFO",
+            transactionType: "BUY",
+            quantity: lots * LOT_SIZE,
+            lots,
+            status: "COMPLETE",
+            orderPurpose: "ENTRY",
+            entryPrice: entryPremium,
+            zerodhaResponse: orderResult,
+        });
+
         // Emit to UI via WebSocket
         getIO().emit("trade:entry", {
             trade: trade.toObject(),
             message: `${direction} ${optionType} ${strike} entered at ₹${entryPremium}`,
         });
 
-        logger.info(
-            `Trade saved: ${signalId} | ${direction} ${optionType} ${strike}`
-        );
+        logger.info(`Trade entered: ${signalId} | ${direction} ${optionType} ${strike}`);
         return { success: true, tradeId: trade._id, orderId: orderResult.orderId };
     }
 
