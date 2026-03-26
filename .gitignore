@@ -1,0 +1,72 @@
+# ==========================
+# 1. OS & IDE
+# ==========================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ==========================
+# 2. Node.js (frontend & node-server)
+# ==========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+.nyc_output/
+.npm
+.eslintcache
+
+# Next.js build output
+.next/
+out/
+build/
+
+# ==========================
+# 3. Python (python-engine)
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+dist/
+build/
+/*.egg-info/
+.eggs/
+.pytest_cache/
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# ==========================
+# 4. Environment Variables
+# ==========================
+# DO NOT COMMIT `.env` files containing secrets.
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# (Optional: you can commit `.env.example` if it doesn't contain actual secrets)
+# !.env.example
+
+# ==========================
+# 5. General / Logs
+# ==========================
+*.log
+logs/
+pids/
+*.pid
