@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: whalehq-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: whalehq
+
+  node-server:
+    build:
+      context: ./node-server
+      dockerfile: Dockerfile
+    container_name: whalehq-server
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mongodb
+    environment:
+      PORT: 4000
+      MONGO_URI: mongodb://mongodb:27017/whalehq
+      JWT_SECRET: your_jwt_secret_change_this
+      FRONTEND_URL: http://localhost:3000
+      NODE_ENV: production
+    volumes:
+      - ./node-server/logs:/app/logs
+
+  python-engine:
+    build:
+      context: ./python-engine
+      dockerfile: Dockerfile
+    container_name: whalehq-python
+    restart: unless-stopped
+    depends_on:
+      - node-server
+    environment:
+      NODE_SERVER_URL: http://node-server:4000
+      MONGO_URI: mongodb://mongodb:27017/whalehq
+      CAPITAL: 500000
+    volumes:
+      - ./python-engine/logs:/app/logs
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: whalehq-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - node-server
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+
+volumes:
+  mongo_data:
