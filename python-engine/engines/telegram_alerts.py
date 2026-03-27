@@ -13,7 +13,7 @@ import os
 from typing import Optional
 from utils.logger import setup_logger
 from utils.time_utils import now_ist
-from models.session_data import Direction, ExitAction
+from models.session_data import Direction
 
 logger = setup_logger("TelegramAlerts")
 
