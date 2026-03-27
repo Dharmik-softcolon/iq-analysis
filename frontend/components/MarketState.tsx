@@ -131,7 +131,7 @@ export default function MarketStatePanel({
                 {/* Daily P&L */}
                 <div
                     className={`p-4 rounded-lg border ${
-                        dailyPnL >= 0
+                        (dailyPnL ?? 0) >= 0
                             ? "bg-green-900/20 border-green-700"
                             : "bg-red-900/20 border-red-700"
                     }`}
@@ -139,11 +139,11 @@ export default function MarketStatePanel({
                     <div className="text-gray-400 text-xs mb-1">DAILY P&L</div>
                     <div
                         className={`text-2xl font-black ${
-                            dailyPnL >= 0 ? "text-green-400" : "text-red-400"
+                            (dailyPnL ?? 0) >= 0 ? "text-green-400" : "text-red-400"
                         }`}
                     >
-                        {dailyPnL >= 0 ? "+" : ""}₹
-                        {Math.abs(dailyPnL).toLocaleString("en-IN")}
+                        {(dailyPnL ?? 0) >= 0 ? "+" : ""}₹
+                        {Math.abs(dailyPnL ?? 0).toLocaleString("en-IN")}
                     </div>
                 </div>
 
@@ -154,16 +154,16 @@ export default function MarketStatePanel({
                             <div className="text-gray-400 text-xs mb-1">DTE</div>
                             <div
                                 className={`text-2xl font-black ${
-                                    dte <= 1 ? "text-red-400" : "text-white"
+                                    (dte ?? 0) <= 1 ? "text-red-400" : "text-white"
                                 }`}
                             >
-                                {dte}
+                                {dte ?? 0}
                             </div>
                         </div>
                         <div>
                             <div className="text-gray-400 text-xs mb-1">TRADES</div>
                             <div className="text-2xl font-black text-white">
-                                {tradesToday}/2
+                                {tradesToday ?? 0}/2
                             </div>
                         </div>
                     </div>
