@@ -26,7 +26,7 @@ class WhaleHQConfig:
     T3_TRAIL_PCT: float = 0.20       # 20% trail for T3
 
     # Lot — must match node-server LOT_SIZE env var
-    LOT_SIZE: int = int(os.getenv("LOT_SIZE", 75))
+    LOT_SIZE: int = int(os.getenv("LOT_SIZE", 65))
 
     # Timing (IST)
     IB_START: str = "09:30"

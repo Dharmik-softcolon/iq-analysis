@@ -6,7 +6,7 @@ const signalService = require("./signal.service");
 
 const logger = createLogger("OrderService");
 
-const LOT_SIZE = parseInt(process.env.LOT_SIZE || "75", 10);
+const LOT_SIZE = parseInt(process.env.LOT_SIZE || "65", 10);
 
 class OrderService {
     async processSignal(signalData, userId) {

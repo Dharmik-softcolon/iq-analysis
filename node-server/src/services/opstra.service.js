@@ -200,8 +200,8 @@ class OpstraService {
             : 0;
 
         // Convert OI to approximate Crores
-        // Each NIFTY lot = 75, each lot face ~₹1L
-        const lotSize = 75;
+        // Each NIFTY lot = 65, each lot face ~₹1L
+        const lotSize = parseInt(process.env.LOT_SIZE || "65", 10);
         const croreMultiplier = lotSize / 10000000;
 
         const totalCallOICr = totalCallOI * croreMultiplier;
@@ -339,7 +339,7 @@ class OpstraService {
         }
 
         // Convert to Crores (approximate)
-        const scale = 75 / 10000000;
+        const scale = parseInt(process.env.LOT_SIZE || "65", 10) / 10000000;
         totalBullishOI = totalBullishOI * scale;
         totalBearishOI = totalBearishOI * scale;
         sbOIChg = sbOIChg * scale;

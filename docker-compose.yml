@@ -28,7 +28,7 @@ services:
       JWT_SECRET: your_jwt_secret_change_this
       FRONTEND_URL: http://localhost:3000
       NODE_ENV: production
-      LOT_SIZE: 75
+      LOT_SIZE: 65
     volumes:
       - ./node-server/logs:/app/logs
 
@@ -44,7 +44,7 @@ services:
       NODE_SERVER_URL: http://node-server:4000
       MONGO_URI: mongodb://mongodb:27017/whalehq
       CAPITAL: 500000
-      LOT_SIZE: 75
+      LOT_SIZE: 65
     volumes:
       - ./python-engine/logs:/app/logs
 

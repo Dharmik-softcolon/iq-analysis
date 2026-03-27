@@ -349,7 +349,7 @@ router.post("/orders/emergency-close", async (req, res) => {
                     {
                         tradingsymbol,
                         transaction_type: "SELL",
-                        quantity: remainingLots * 75,
+                        quantity: remainingLots * parseInt(process.env.LOT_SIZE || "65", 10),
                         order_type: "MARKET",
                     }
                 );
