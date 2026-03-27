@@ -81,8 +81,7 @@ export default function IAEScoreboard({ score, breakdown }: Props) {
             {/* Engine breakdown */}
             <div className="space-y-3">
                 {engines.map((engine) => {
-                    // const value = breakdown[engine.key as keyof IAEBreakdown] || 0;
-                    const value =  0;
+                    const value = breakdown[engine.key as keyof IAEBreakdown] || 0;
 
                     const fired = value > 0;
 
