@@ -101,7 +101,7 @@ export default function MarketStatePanel({
                 <div className="p-4 rounded-lg bg-gray-800 border border-gray-700">
                     <div className="text-gray-400 text-xs mb-1">NIFTY LTP</div>
                     <div className="text-2xl font-black text-white">
-                        {niftyLTP.toLocaleString("en-IN")}
+                        {niftyLTP?.toLocaleString("en-IN")}
                     </div>
                 </div>
 
@@ -117,7 +117,7 @@ export default function MarketStatePanel({
                                     : "text-yellow-400"
                         }`}
                     >
-                        {pcr.toFixed(2)}
+                        {pcr?.toFixed(2)}
                     </div>
                     <div className="text-gray-500 text-xs mt-1">
                         {pcr < 0.75

@@ -102,3 +102,59 @@ position is where 60% of profits live
 
 ⚠️ ZERODHA TOKEN — Must re-login every morning.
 System will not trade without valid token
+
+
+----------------------
+
+🐍 STEP 2 — Python Engine Setup
+bash
+# Navigate to python engine
+cd python-engine
+
+# Create virtual environment (RECOMMENDED)
+python -m venv venv
+
+# Activate virtual environment
+# Windows (Git Bash):
+source venv/Scripts/activate
+
+# Windows (CMD):
+venv\Scripts\activate.bat
+
+# Windows (PowerShell):
+venv\Scripts\Activate.ps1
+
+# You should see (venv) in terminal now ✅
+
+# Install all packages
+pip install -r requirements.txt
+
+# Verify key packages installed
+pip show requests
+pip show python-dotenv
+pip show pytz
+pip show pymongo
+
+
+---------------------------
+
+# Start everything (copy-paste these)
+
+# Terminal 1 - MongoDB
+mongod
+
+# Terminal 2 - Node Server
+cd "D:/Dharmik Nexa/whalehq_project/node-server"
+npm run dev
+
+# Terminal 3 - Python Engine
+cd "D:/Dharmik Nexa/whalehq_project/python-engine"
+source venv/Scripts/activate
+python main.py
+
+# Terminal 4 - Frontend
+cd "D:/Dharmik Nexa/whalehq_project/frontend"
+npm run dev
+
+# Open browser
+# http://localhost:3000
