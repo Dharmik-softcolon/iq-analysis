@@ -19,7 +19,7 @@ export default function ActiveTrade({ trades, onUpdate }: Props) {
         try {
             await tradeAPI.manualExit(signalId, "Manual exit from UI");
             onUpdate();
-        } catch (err) {
+        } catch {
             alert("Exit failed. Please check manually on Zerodha.");
         } finally {
             setExiting(null);
@@ -50,7 +50,7 @@ export default function ActiveTrade({ trades, onUpdate }: Props) {
             <div className="space-y-4">
                 {trades.map((trade) => {
                     const pnlColor =
-                        trade.totalPnL >= 0 ? "text-green-400" : "text-red-400";
+                        (trade.totalPnL ?? 0) >= 0 ? "text-green-400" : "text-red-400";
 
                     return (
                         <div
@@ -81,8 +81,8 @@ export default function ActiveTrade({ trades, onUpdate }: Props) {
                   </span>
                                 </div>
                                 <div className={`font-bold ${pnlColor}`}>
-                                    {trade.totalPnL >= 0 ? "+" : ""}₹
-                                    {trade.totalPnL.toLocaleString("en-IN")}
+                                    {(trade.totalPnL ?? 0) >= 0 ? "+" : ""}₹
+                                    {(trade.totalPnL ?? 0).toLocaleString("en-IN")}
                                 </div>
                             </div>
 

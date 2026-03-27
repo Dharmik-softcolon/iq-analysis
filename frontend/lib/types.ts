@@ -50,14 +50,15 @@ export interface Trade {
     t1Exited: boolean;
     t2Exited: boolean;
     t3Exited: boolean;
-    t1PnL: number;
-    t2PnL: number;
-    t3PnL: number;
+    t1PnL?: number;
+    t2PnL?: number;
+    t3PnL?: number;
     totalPnL: number;
     status: TradeStatus;
     exitReason?: string;
     capitalDeployed: number;
     riskAmount: number;
+    adverseIndexSL?: number;
     createdAt: string;
 }
 

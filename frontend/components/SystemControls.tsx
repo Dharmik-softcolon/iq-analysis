@@ -32,7 +32,7 @@ export default function SystemControls({
         try {
             await systemAPI.toggleAutoTrading();
             onUpdate();
-        } catch (err) {
+        } catch {
             alert("Failed to toggle auto trading");
         } finally {
             setLoading(false);
@@ -48,7 +48,7 @@ export default function SystemControls({
             });
             alert("Settings saved");
             onUpdate();
-        } catch (err) {
+        } catch {
             alert("Failed to save settings");
         }
     };

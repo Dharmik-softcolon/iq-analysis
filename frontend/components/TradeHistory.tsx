@@ -88,13 +88,13 @@ export default function TradeHistory({ trades }: Props) {
                             </td>
                             <td
                                 className={`py-3 text-right font-bold ${
-                                    trade.totalPnL >= 0
+                                    (trade.totalPnL ?? 0) >= 0
                                         ? "text-green-400"
                                         : "text-red-400"
                                 }`}
                             >
-                                {trade.totalPnL >= 0 ? "+" : ""}
-                                {trade.totalPnL.toLocaleString("en-IN")}
+                                {(trade.totalPnL ?? 0) >= 0 ? "+" : ""}
+                                {(trade.totalPnL ?? 0).toLocaleString("en-IN")}
                             </td>
                         </tr>
                     ))}
