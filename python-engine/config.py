@@ -25,8 +25,8 @@ class WhaleHQConfig:
     T2_TARGET: float = 0.80          # +80% for T2
     T3_TRAIL_PCT: float = 0.20       # 20% trail for T3
 
-    # Lot
-    LOT_SIZE: int = 75               # NIFTY lot size
+    # Lot — must match node-server LOT_SIZE env var
+    LOT_SIZE: int = int(os.getenv("LOT_SIZE", 75))
 
     # Timing (IST)
     IB_START: str = "09:30"
@@ -67,6 +67,5 @@ class WhaleHQConfig:
     # API
     NODE_SERVER_URL: str = os.getenv("NODE_SERVER_URL", "http://localhost:4000")
     MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017/whalehq")
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
 
 config = WhaleHQConfig()

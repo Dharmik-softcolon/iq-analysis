@@ -165,11 +165,64 @@ app.use((err, req, res, next) => {
     });
 });
 
+// ── Restore Zerodha Sessions on Startup ───────
+// Re-initialises Kite for all users who have a valid (non-expired) access token
+// so that market data and order placement work immediately after a server restart
+async function restoreZerodhaSessions() {
+    try {
+        const User = require("./models/User");
+        const zerodhaService = require("./services/zerodha.service");
+
+        const users = await User.find({
+            zerodhaAccessToken: { $exists: true, $ne: null },
+            zerodhaApiKey: { $exists: true, $ne: null },
+            isActive: true,
+        });
+
+        let restored = 0;
+        for (const user of users) {
+            // Skip expired tokens (Zerodha tokens expire at midnight IST)
+            if (user.tokenExpiry && new Date() > user.tokenExpiry) {
+                logger.warn(
+                    `Skipping expired token for user: ${user.email}`
+                );
+                continue;
+            }
+
+            try {
+                await zerodhaService.initializeKite(
+                    user._id,
+                    user.zerodhaApiKey,
+                    user.zerodhaAccessToken
+                );
+                restored++;
+                logger.info(
+                    `Zerodha session restored for: ${user.email}`
+                );
+            } catch (err) {
+                logger.error(
+                    `Failed to restore session for ${user.email}: ${err.message}`
+                );
+            }
+        }
+
+        logger.info(
+            `Zerodha sessions restored: ${restored}/${users.length} users`
+        );
+    } catch (err) {
+        logger.error(`Session restore error: ${err.message}`);
+    }
+}
+
 // Start server
 const PORT = process.env.PORT || 4000;
 
 const start = async () => {
     await connectDB();
+
+    // Restore Zerodha sessions after DB is connected
+    await restoreZerodhaSessions();
+
     server.listen(PORT, () => {
         logger.info(`WhaleHQ Server running on port ${PORT}`);
     });

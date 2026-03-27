@@ -54,8 +54,9 @@ class ZerodhaService {
 
         try {
             // Get NIFTY quote
-            const quote = await kite.getQuote([`NSE:${symbol} 50`]);
-            const niftyData = quote[`NSE:${symbol} 50`];
+            const quoteSymbol = "NSE:NIFTY 50";
+            const quote = await kite.getQuote([quoteSymbol]);
+            const niftyData = quote[quoteSymbol];
 
             // Get expiry dates
             const instruments = await kite.getInstruments("NFO");
