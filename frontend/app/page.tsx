@@ -23,7 +23,12 @@ export default function LoginPage() {
             localStorage.setItem("whalehq_token", token);
             localStorage.setItem("whalehq_user", JSON.stringify(user));
 
-            router.push("/dashboard");
+            // Smart Redirect: If Kite token expired, force to SSO page. Else go to Dashboard.
+            if (user.hasZerodha && !user.isZerodhaConnected) {
+                router.push("/settings/zerodha");
+            } else {
+                router.push("/dashboard");
+            }
         } catch (err: any) {
             setError(
                 err.response?.data?.message || "Login failed. Check credentials."

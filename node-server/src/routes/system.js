@@ -88,13 +88,19 @@ router.get("/market/chain", async (req, res) => {
             });
         }
 
+        const isTokenValid = user.tokenExpiry && new Date(user.tokenExpiry) > new Date();
+
         // Initialize kite if needed
         if (!zerodhaService.getKite(user._id)) {
-            await zerodhaService.initializeKite(
-                user._id,
-                user.zerodhaApiKey,
-                user.zerodhaAccessToken
-            );
+            if (user.zerodhaApiKey && user.zerodhaAccessToken && isTokenValid) {
+                await zerodhaService.initializeKite(
+                    user._id,
+                    user.zerodhaApiKey,
+                    user.zerodhaAccessToken
+                );
+            } else {
+                return res.status(401).json({ success: false, message: "Zerodha token expired or missing. Please login again." });
+            }
         }
 
         // Use merged data (Zerodha + Opstra/NSE)
@@ -117,6 +123,42 @@ router.get("/market/price", async (req, res) => {
             niftyLTP: state.niftyLTP || 0,
             vwap: state.vwap || 0,
         });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// GET /api/system/indices
+router.get("/indices", authMiddleware, async (req, res) => {
+    try {
+        // Find the active user or fallback to logged in user
+        let user = await User.findOne({ isAutoTrading: true });
+        if (!user) {
+            user = await User.findById(req.user._id);
+        }
+        
+        const userId = user._id;
+        const isTokenValid = user.tokenExpiry && new Date(user.tokenExpiry) > new Date();
+
+        // Initialize kite if needed and credentials exist
+        if (!zerodhaService.getKite(userId)) {
+            if (user.zerodhaApiKey && user.zerodhaAccessToken && isTokenValid) {
+                await zerodhaService.initializeKite(
+                    userId,
+                    user.zerodhaApiKey,
+                    user.zerodhaAccessToken
+                );
+            } else {
+                return res.status(401).json({ success: false, message: "Zerodha token expired" });
+            }
+        }
+
+        const indices = await zerodhaService.getIndicesQuotes(userId);
+        if (!indices) {
+            return res.status(400).json({ success: false, message: "Kite session not initialized" });
+        }
+
+        res.json({ success: true, data: indices });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

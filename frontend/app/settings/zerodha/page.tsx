@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { authAPI } from "@/lib/api";
 
 export default function ZerodhaSetupPage() {
-    const [step, setStep] = useState<"credentials" | "login" | "done">(
-        "credentials"
-    );
+    const searchParams = useSearchParams();
+    const urlRequestToken = searchParams.get("request_token");
+
+    const [step, setStep] = useState<"credentials" | "login" | "done">("credentials");
     const [apiKey, setApiKey] = useState("");
     const [apiSecret, setApiSecret] = useState("");
     const [requestToken, setRequestToken] = useState("");
@@ -16,11 +18,59 @@ export default function ZerodhaSetupPage() {
     const [userId, setUserId] = useState("");
 
     useEffect(() => {
-        const user = JSON.parse(
-            localStorage.getItem("whalehq_user") || "{}"
-        );
-        setUserId(user.id || "");
+        // Fetch user context
+        const userStr = localStorage.getItem("whalehq_user");
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            setUserId(user.id || "");
+            
+            // If they already have an API key saved, fetch user details to get the key and rebuild login URL
+            if (user.hasZerodha) {
+                authAPI.getMe().then((res) => {
+                    const fullUser = res.data?.user;
+                    if (fullUser?.zerodhaApiKey) {
+                        setLoginUrl(`https://kite.trade/connect/login?v=3&api_key=${fullUser.zerodhaApiKey}`);
+                        setStep("login");
+                    }
+                }).catch(console.error);
+            }
+        }
     }, []);
+
+    // Effect to automatically process the request_token from URL redirect
+    useEffect(() => {
+        if (urlRequestToken && userId && step !== "done") {
+            const autoSubmitToken = async () => {
+                setLoading(true);
+                setError("");
+                setRequestToken(urlRequestToken);
+                try {
+                    await authAPI.zerodhaCallback(userId, urlRequestToken);
+                    setStep("done");
+                } catch (err: any) {
+                    setError(err.response?.data?.message || "Auto-authentication failed");
+                    setStep("login");
+                } finally {
+                    setLoading(false);
+                }
+            };
+            autoSubmitToken();
+        }
+    }, [urlRequestToken, userId]);
+
+    const handleDynamicLoginUrl = async () => {
+        // Fallback or explicit request for login URL when skipping step 1
+        setLoading(true);
+        // Note: In a real system, the backend should provide an endpoint to just get the authUrl
+        // Since we don't have that endpoint standalone without credentials, for safety 
+        // we'll advise the user they need Kite credentials unless they just use the known format:
+        // https://kite.trade/connect/login?v=3&api_key=XXX
+        // However, since we can't reliably get the API key client-side, we might need them to 
+        // re-save it if it's their very first time. BUT, if they are stuck at step 2, 
+        // we can just reveal the credentials form if they need a new login URL.
+        setStep("credentials");
+        setLoading(false);
+    };
 
     const saveCredentials = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -176,21 +226,26 @@ export default function ZerodhaSetupPage() {
                                 Step 2: Authenticate with Zerodha
                             </h3>
 
-                            <a
-                                href={loginUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="block w-full py-3 bg-orange-600
-                           hover:bg-orange-500 text-white rounded-lg
-                           font-bold text-center transition"
-                            >
-                                🔗 Open Zerodha Login →
-                            </a>
+                            {loginUrl ? (
+                                <a
+                                    href={loginUrl}
+                                    className="block w-full py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg font-bold text-center transition"
+                                >
+                                    🔗 Open Zerodha Login →
+                                </a>
+                            ) : (
+                                <button
+                                    onClick={() => setStep("credentials")}
+                                    className="block w-full py-3 bg-orange-800 text-white rounded-lg font-bold text-center transition"
+                                >
+                                    Login URL expired. Re-enter credentials to generate a new one.
+                                </button>
+                            )}
 
                             <div className="p-3 bg-gray-800 rounded-lg text-sm text-gray-400">
-                                After logging in, Zerodha will redirect to your callback URL.
-                                Copy the <code className="text-yellow-400">request_token</code>{" "}
-                                from the URL and paste it below.
+                                After logging in, Zerodha will redirect back here.
+                                The system will detect the code in the URL and connect <strong>automatically</strong>.
+                                No need to copy-paste.
                             </div>
 
                             <form onSubmit={submitRequestToken} className="space-y-4">

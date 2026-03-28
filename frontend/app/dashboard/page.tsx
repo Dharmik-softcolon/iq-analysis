@@ -14,6 +14,7 @@ import SystemControls from "@/components/SystemControls";
 import StatsPanel from "@/components/StatsPanel";
 import PnLChart from "@/components/PnLChart";
 import AlertPanel from "@/components/AlertPanel";
+import TopBarIndices from "@/components/TopBarIndices";
 
 const defaultState: SystemState = {
     timestamp: "",
@@ -139,6 +140,11 @@ export default function DashboardPage() {
                                 NIFTY Weekly Options Engine
                             </p>
                         </div>
+                    </div>
+
+                    {/* Live Market Indices (Hidden on small mobile) */}
+                    <div className="hidden md:flex flex-1 justify-center items-center">
+                        <TopBarIndices />
                     </div>
 
                     {/* System mode badge */}

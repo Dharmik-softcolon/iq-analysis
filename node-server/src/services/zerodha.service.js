@@ -248,6 +248,27 @@ class ZerodhaService {
         const day = date.getDate().toString().padStart(2, "0");
         return `${symbol}${year}${day}${month}${strike}${optionType}`;
     }
+
+    async getIndicesQuotes(userId) {
+        const kite = this.getKite(userId);
+        if (!kite) return null;
+
+        try {
+            const symbols = ["NSE:NIFTY 50", "NSE:NIFTY BANK", "BSE:SENSEX"];
+            const quotes = await kite.getQuote(symbols);
+            
+            // Format for frontend
+            return {
+                timestamp: new Date().toISOString(),
+                nifty: quotes["NSE:NIFTY 50"] || null,
+                bankNifty: quotes["NSE:NIFTY BANK"] || null,
+                sensex: quotes["BSE:SENSEX"] || null,
+            };
+        } catch (err) {
+            logger.error(`Failed to fetch indices quotes: ${err.message}`);
+            throw err;
+        }
+    }
 }
 
 module.exports = new ZerodhaService();
