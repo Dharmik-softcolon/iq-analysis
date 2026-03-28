@@ -79,7 +79,7 @@ export default function IAEScoreboard({ score, breakdown }: Props) {
             </div>
 
             {/* Engine breakdown */}
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
                 {engines.map((engine) => {
                     const value = (breakdown ?? {})[engine.key as keyof IAEBreakdown] || 0;
 
@@ -88,31 +88,31 @@ export default function IAEScoreboard({ score, breakdown }: Props) {
                     return (
                         <div
                             key={engine.key}
-                            className={`flex items-center justify-between p-3 rounded-lg border ${
+                            className={`flex items-center justify-between p-2.5 rounded-lg border ${
                                 fired
                                     ? "border-green-700/40 bg-green-900/10"
                                     : "border-gray-800/50 bg-gray-800/20"
                             }`}
                         >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 overflow-hidden">
                                 <div
-                                    className={`w-1.5 h-1.5 rounded-full ${
+                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                         fired ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" : "bg-gray-700"
                                     }`}
                                 />
-                                <div>
-                                    <div className={`text-sm font-medium ${fired ? 'text-gray-200' : 'text-gray-400'}`}>
+                                <div className="min-w-0 pr-2">
+                                    <div className={`text-xs font-semibold truncate ${fired ? 'text-gray-200' : 'text-gray-400'}`}>
                                         {engine.label}
                                     </div>
-                                    <div className="text-gray-600 text-xs">{engine.desc}</div>
+                                    <div className="text-[10px] text-gray-500 truncate">{engine.desc}</div>
                                 </div>
                             </div>
                             <div
-                                className={`text-lg font-semibold font-mono tabular-nums tracking-tight ${
+                                className={`text-sm font-semibold font-mono tabular-nums tracking-tight shrink-0 ${
                                     fired ? "text-green-400" : "text-gray-600"
                                 }`}
                             >
-                                <span className={fired ? '' : 'opacity-0'}>+</span>{value}<span className="text-xs text-gray-600">/{engine.max}</span>
+                                <span className={fired ? '' : 'opacity-0'}>+</span>{value}<span className="text-[10px] text-gray-600">/{engine.max}</span>
                             </div>
                         </div>
                     );
