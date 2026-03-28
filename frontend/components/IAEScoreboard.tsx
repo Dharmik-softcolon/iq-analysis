@@ -82,7 +82,7 @@ export default function IAEScoreboard({ score, breakdown }: Props) {
             </div>
 
             {/* Engine rows */}
-            <div className="grid grid-cols-1 gap-1.5 mb-4">
+            <div className="grid grid-cols-2 gap-1.5 mb-4">
                 {engines.map((engine) => {
                     const value = (breakdown ?? {})[engine.key as keyof IAEBreakdown] || 0;
                     const fired = value > 0;
