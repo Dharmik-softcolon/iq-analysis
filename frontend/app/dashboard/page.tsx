@@ -127,103 +127,104 @@ export default function DashboardPage() {
     return (
         <div className="min-h-screen bg-gray-950">
             {/* Header */}
-            <header className="bg-gray-900 border-b border-gray-700
-                         sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center
-                        justify-between">
-                    <div className="flex items-center gap-3">
-                        <span className="text-2xl drop-shadow-md">🐋</span>
-                        <div>
-                            <h1 className="text-gray-100 font-bold tracking-tight text-xl leading-none">
-                                WhaleHQ v6.0
-                            </h1>
-                            <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-widest mt-1">
-                                NIFTY Weekly Options Engine
-                            </p>
+            <header className="sticky top-0 z-50">
+                {/* Primary Top Bar */}
+                <div className="bg-gray-900 border-b border-gray-700">
+                    <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl drop-shadow-md">🐋</span>
+                            <div>
+                                <h1 className="text-gray-100 font-bold tracking-tight text-xl leading-none">
+                                    WhaleHQ v6.0
+                                </h1>
+                                <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-widest mt-1">
+                                    NIFTY Weekly Options Engine
+                                </p>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Live Market Indices (Hidden on small mobile) */}
-                    <div className="hidden md:flex flex-1 justify-center items-center">
-                        <TopBarIndices />
-                    </div>
+                        {/* Live Market Indices (Hidden on small mobile) */}
+                        <div className="hidden md:flex flex-1 justify-center items-center">
+                            <TopBarIndices />
+                        </div>
 
-                    {/* System mode badge */}
-                    <div className="flex items-center gap-4">
-                        <div
-                            className={`flex items-center gap-2 px-3 py-1 rounded-full 
-                           text-xs font-bold border ${
-                                state.systemMode === "NORMAL"
+                        {/* System mode badge */}
+                        <div className="flex items-center gap-4">
+                            <div
+                                className={`flex items-center gap-2 px-3 py-1 rounded-full 
+                               text-xs font-bold border ${state.systemMode === "NORMAL"
                                     ? "bg-blue-900/50 border-blue-600 text-blue-400"
                                     : state.systemMode === "EVENT"
                                         ? "bg-purple-900/50 border-purple-600 text-purple-400"
                                         : state.systemMode === "SHUTDOWN"
                                             ? "bg-red-900/50 border-red-600 text-red-400"
                                             : "bg-gray-800 border-gray-600 text-gray-400"
-                            }`}
-                        >
-              <span
-                  className={`w-2 h-2 rounded-full ${
-                      state.systemMode === "NORMAL"
-                          ? "bg-blue-400 animate-pulse"
-                          : state.systemMode === "EVENT"
-                              ? "bg-purple-400 animate-pulse"
-                              : state.systemMode === "SHUTDOWN"
-                                  ? "bg-red-400"
-                                  : "bg-gray-500"
-                  }`}
-              />
-                            {state.systemMode}
+                                    }`}
+                            >
+                                <span
+                                    className={`w-2 h-2 rounded-full ${state.systemMode === "NORMAL"
+                                        ? "bg-blue-400 animate-pulse"
+                                        : state.systemMode === "EVENT"
+                                            ? "bg-purple-400 animate-pulse"
+                                            : state.systemMode === "SHUTDOWN"
+                                                ? "bg-red-400"
+                                                : "bg-gray-500"
+                                        }`}
+                                />
+                                {state.systemMode}
+                            </div>
+
+                            {lastUpdated && (
+                                <span className="text-gray-500 text-xs hidden md:block">
+                                    Updated: {lastUpdated}
+                                </span>
+                            )}
+
+                            <button
+                                onClick={handleLogout}
+                                className="text-gray-400 hover:text-white text-sm transition"
+                            >
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Secondary Nav Bar (Tabs + Margin) */}
+                <div className="bg-gray-950/80 backdrop-blur-md border-b border-gray-800/50 pt-4 pb-4">
+                    <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        {/* Tab navigation */}
+                        <div className="flex gap-1 bg-gray-900/40 border border-gray-800/80 rounded-lg p-1 w-fit flex-wrap">
+                            {[
+                                { id: "overview", label: "Overview" },
+                                { id: "trades", label: "Trades" },
+                                { id: "stats", label: "Stats" },
+                                { id: "positions", label: "Active Positions" },
+                                { id: "alerts", label: "Live Alerts" },
+                                { id: "curve", label: "Cumulative P&L Curve" },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                                        activeTab === tab.id
+                                            ? "bg-gray-800 text-gray-100 shadow-sm border border-gray-700/50"
+                                            : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/40 border border-transparent"
+                                    }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
                         </div>
 
-                        {lastUpdated && (
-                            <span className="text-gray-500 text-xs hidden md:block">
-                Updated: {lastUpdated}
-              </span>
-                        )}
-
-                        <button
-                            onClick={handleLogout}
-                            className="text-gray-400 hover:text-white text-sm transition"
-                        >
-                            Logout
-                        </button>
+                        {/* Live Available Margin */}
+                        <AvailableMargin />
                     </div>
                 </div>
             </header>
 
             {/* Main content */}
             <main className="max-w-7xl mx-auto px-4 py-6">
-
-                {/* Secondary Header Row: Tabs + Margins */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                    {/* Tab navigation */}
-                    <div className="flex gap-1 bg-gray-900/40 border border-gray-800/80 rounded-lg p-1.5 w-fit flex-wrap">
-                        {[
-                            { id: "overview", label: "Overview" },
-                            { id: "trades", label: "Trades" },
-                            { id: "stats", label: "Stats" },
-                            { id: "positions", label: "Active Positions" },
-                            { id: "alerts", label: "Live Alerts" },
-                            { id: "curve", label: "Cumulative P&L Curve" },
-                        ].map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
-                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                                    activeTab === tab.id
-                                        ? "bg-gray-800 text-gray-100 shadow-sm border border-gray-700/50"
-                                        : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/40 border border-transparent"
-                                }`}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Live Available Margin */}
-                    <AvailableMargin />
-                </div>
 
                 {/* Overview Tab */}
                 {activeTab === "overview" && (
