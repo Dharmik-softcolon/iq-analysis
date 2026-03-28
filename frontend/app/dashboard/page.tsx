@@ -229,7 +229,7 @@ export default function DashboardPage() {
                 {activeTab === "overview" && (
                     <div className="space-y-6">
                         {/* Top row */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6">
                             <MarketStatePanel
                                 state={state.marketState}
                                 direction={state.direction}
@@ -240,21 +240,20 @@ export default function DashboardPage() {
                                 dailyPnL={state.dailyPnL}
                                 tradesToday={state.tradesToday}
                             />
+                        </div>
+
+                        {/* Second row */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                             <IAEScoreboard
                                 score={state.iaeScore}
                                 breakdown={state.iaeBreakdown}
                             />
-                        </div>
-
-                        {/* System Controls row */}
-                        <div className="max-w-2xl">
                             <SystemControls
                                 isAutoTrading={user?.isAutoTrading || false}
                                 capital={user?.capital || 500000}
                                 onUpdate={loadData}
                             />
                         </div>
-
                     </div>
                 )}
 
