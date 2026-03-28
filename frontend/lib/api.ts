@@ -45,6 +45,7 @@ export const authAPI = {
 export const systemAPI = {
     getState: () => api.get("/system/state"),
     getIndices: () => api.get("/system/indices"),
+    getMargins: () => api.get("/system/margins"),
     toggleAutoTrading: () => api.post("/system/toggle-auto"),
     updateSettings: (settings: Record<string, unknown>) =>
         api.put("/system/settings", settings),

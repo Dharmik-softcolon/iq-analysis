@@ -269,6 +269,23 @@ class ZerodhaService {
             throw err;
         }
     }
+
+    async getMargins(userId) {
+        const kite = this.getKite(userId);
+        if (!kite) return null;
+
+        try {
+            const margins = await kite.getMargins();
+            return {
+                timestamp: new Date().toISOString(),
+                available: margins.equity?.net || 0,
+                used: margins.equity?.utilised || 0,
+            };
+        } catch (err) {
+            logger.error(`Failed to fetch margins: ${err.message}`);
+            throw err;
+        }
+    }
 }
 
 module.exports = new ZerodhaService();

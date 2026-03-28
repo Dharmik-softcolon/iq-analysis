@@ -15,6 +15,7 @@ import StatsPanel from "@/components/StatsPanel";
 import PnLChart from "@/components/PnLChart";
 import AlertPanel from "@/components/AlertPanel";
 import TopBarIndices from "@/components/TopBarIndices";
+import AvailableMargin from "@/components/AvailableMargin";
 
 const defaultState: SystemState = {
     timestamp: "",
@@ -194,23 +195,28 @@ export default function DashboardPage() {
             {/* Main content */}
             <main className="max-w-7xl mx-auto px-4 py-6">
 
-                {/* Tab navigation */}
-                <div className="flex gap-1 mb-6 bg-gray-900 border
-                        border-gray-700 rounded-lg p-1 w-fit">
-                    {(["overview", "trades", "stats"] as const).map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium 
+                {/* Secondary Header Row: Tabs + Margins */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    {/* Tab navigation */}
+                    <div className="flex gap-1 bg-gray-900 border border-gray-700 rounded-lg p-1 w-fit">
+                        {(["overview", "trades", "stats"] as const).map((tab) => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-4 py-2 rounded-md text-sm font-medium 
                           capitalize transition ${
-                                activeTab === tab
-                                    ? "bg-blue-600 text-white"
-                                    : "text-gray-400 hover:text-white"
-                            }`}
-                        >
-                            {tab}
-                        </button>
-                    ))}
+                                    activeTab === tab
+                                        ? "bg-blue-600 text-white"
+                                        : "text-gray-400 hover:text-white"
+                                }`}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Live Available Margin */}
+                    <AvailableMargin />
                 </div>
 
                 {/* Overview Tab */}

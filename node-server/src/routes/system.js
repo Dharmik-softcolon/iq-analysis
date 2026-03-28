@@ -164,6 +164,38 @@ router.get("/indices", authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/system/margins
+router.get("/margins", authMiddleware, async (req, res) => {
+    try {
+        let user = await User.findOne({ isAutoTrading: true });
+        if (!user) user = await User.findById(req.user._id);
+
+        const userId = user._id;
+        const isTokenValid = user.tokenExpiry && new Date(user.tokenExpiry) > new Date();
+
+        if (!zerodhaService.getKite(userId)) {
+            if (user.zerodhaApiKey && user.zerodhaAccessToken && isTokenValid) {
+                await zerodhaService.initializeKite(
+                    userId,
+                    user.zerodhaApiKey,
+                    user.zerodhaAccessToken
+                );
+            } else {
+                return res.status(401).json({ success: false, message: "Zerodha token expired" });
+            }
+        }
+
+        const margins = await zerodhaService.getMargins(userId);
+        if (!margins) {
+            return res.status(400).json({ success: false, message: "Kite session not initialized" });
+        }
+
+        res.json({ success: true, data: margins });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // POST /api/system/toggle-auto
 // Enable/disable auto trading
 router.post("/toggle-auto", authMiddleware, async (req, res) => {
