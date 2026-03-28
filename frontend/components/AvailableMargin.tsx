@@ -49,10 +49,10 @@ export default function AvailableMargin() {
         : `₹ ••••••••`;
 
     return (
-        <div className="flex items-center gap-3 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2">
-            <span className="text-gray-400 text-sm font-semibold">Available Margin:</span>
+        <div className="flex items-center gap-3 bg-gray-900 border border-gray-800/80 rounded-lg px-4 py-2">
+            <span className="text-gray-400 text-sm font-medium">Available Margin:</span>
             <div className="flex items-center gap-2">
-                <span className={`text-sm font-bold ${!margins ? 'text-gray-500' : 'text-blue-400'}`}>
+                <span className={`text-sm font-medium font-mono tabular-nums tracking-tight ${!margins ? 'text-gray-500' : 'text-blue-400/90'}`}>
                     {valueStr}
                 </span>
                 <button 

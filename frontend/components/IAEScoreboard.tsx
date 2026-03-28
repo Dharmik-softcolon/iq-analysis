@@ -35,22 +35,22 @@ const getScoreLabel = (score: number) => {
 
 export default function IAEScoreboard({ score, breakdown }: Props) {
     return (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
+        <div className="bg-gray-900/40 border border-gray-800/80 rounded-xl p-6 shadow-sm flex flex-col h-full">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h2 className="text-white font-bold text-lg">
+                    <h2 className="text-gray-100 font-semibold tracking-tight text-lg">
                         IAE Scoring Engine
                     </h2>
-                    <p className="text-gray-400 text-sm">
-                        Institutional Aggression Engine v2.0
+                    <p className="text-gray-500 text-xs mt-0.5">
+                        Institutional Aggression v2.0
                     </p>
                 </div>
                 <div className="text-right">
-                    <div className={`text-4xl font-black ${getScoreColor(score)}`}>
-                        {score}/8
+                    <div className={`text-4xl font-bold tracking-tighter font-mono tabular-nums ${getScoreColor(score)}`}>
+                        {score}<span className="text-2xl text-gray-500">/8</span>
                     </div>
-                    <div className={`text-sm font-bold ${getScoreColor(score)}`}>
+                    <div className={`text-[11px] font-bold tracking-wider mt-1 ${getScoreColor(score)}`}>
                         {getScoreLabel(score)}
                     </div>
                 </div>
@@ -90,29 +90,29 @@ export default function IAEScoreboard({ score, breakdown }: Props) {
                             key={engine.key}
                             className={`flex items-center justify-between p-3 rounded-lg border ${
                                 fired
-                                    ? "border-green-700 bg-green-900/20"
-                                    : "border-gray-700 bg-gray-800/50"
+                                    ? "border-green-700/40 bg-green-900/10"
+                                    : "border-gray-800/50 bg-gray-800/20"
                             }`}
                         >
                             <div className="flex items-center gap-3">
                                 <div
-                                    className={`w-2 h-2 rounded-full ${
-                                        fired ? "bg-green-400" : "bg-gray-600"
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                        fired ? "bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" : "bg-gray-700"
                                     }`}
                                 />
                                 <div>
-                                    <div className="text-white text-sm font-medium">
+                                    <div className={`text-sm font-medium ${fired ? 'text-gray-200' : 'text-gray-400'}`}>
                                         {engine.label}
                                     </div>
-                                    <div className="text-gray-500 text-xs">{engine.desc}</div>
+                                    <div className="text-gray-600 text-xs">{engine.desc}</div>
                                 </div>
                             </div>
                             <div
-                                className={`text-lg font-bold ${
+                                className={`text-lg font-semibold font-mono tabular-nums tracking-tight ${
                                     fired ? "text-green-400" : "text-gray-600"
                                 }`}
                             >
-                                +{value}/{engine.max}
+                                <span className={fired ? '' : 'opacity-0'}>+</span>{value}<span className="text-xs text-gray-600">/{engine.max}</span>
                             </div>
                         </div>
                     );
@@ -120,20 +120,22 @@ export default function IAEScoreboard({ score, breakdown }: Props) {
             </div>
 
             {/* Trade verdict */}
-            <div
-                className={`mt-6 p-4 rounded-lg text-center font-bold ${
-                    score >= 6
-                        ? "bg-green-900/40 border border-green-600 text-green-400"
-                        : score >= 4
-                            ? "bg-yellow-900/40 border border-yellow-600 text-yellow-400"
-                            : "bg-red-900/40 border border-red-600 text-red-400"
-                }`}
-            >
-                {score >= 4
-                    ? `TRADE PERMITTED — ${(
-                        score >= 6 ? 100 : score === 5 ? 75 : 50
-                    )}% SIZE`
-                    : "NO TRADE — SCORE BELOW MINIMUM (4)"}
+            <div className="mt-auto pt-6">
+                <div
+                    className={`p-3 rounded-lg text-center font-semibold tracking-tight text-sm ${
+                        score >= 6
+                            ? "bg-green-900/20 border border-green-700/50 text-green-400"
+                            : score >= 4
+                                ? "bg-yellow-900/20 border border-yellow-700/50 text-yellow-400"
+                                : "bg-red-900/10 border border-red-900/50 text-red-500/80"
+                    }`}
+                >
+                    {score >= 4
+                        ? `TRADE PERMITTED — ${(
+                            score >= 6 ? 100 : score === 5 ? 75 : 50
+                        )}% SIZE`
+                        : "NO TRADE — SCORE BELOW MINIMUM"}
+                </div>
             </div>
         </div>
     );

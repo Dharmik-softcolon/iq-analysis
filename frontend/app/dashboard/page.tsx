@@ -132,12 +132,12 @@ export default function DashboardPage() {
                 <div className="max-w-7xl mx-auto px-4 py-3 flex items-center
                         justify-between">
                     <div className="flex items-center gap-3">
-                        <span className="text-2xl">🐋</span>
+                        <span className="text-2xl drop-shadow-md">🐋</span>
                         <div>
-                            <h1 className="text-white font-black text-lg leading-none">
+                            <h1 className="text-gray-100 font-bold tracking-tight text-xl leading-none">
                                 WhaleHQ v6.0
                             </h1>
-                            <p className="text-gray-500 text-xs">
+                            <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-widest mt-1">
                                 NIFTY Weekly Options Engine
                             </p>
                         </div>
@@ -198,7 +198,7 @@ export default function DashboardPage() {
                 {/* Secondary Header Row: Tabs + Margins */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     {/* Tab navigation */}
-                    <div className="flex gap-1 bg-gray-900 border border-gray-700 rounded-lg p-1 w-fit flex-wrap">
+                    <div className="flex gap-1 bg-gray-900/40 border border-gray-800/80 rounded-lg p-1.5 w-fit flex-wrap">
                         {[
                             { id: "overview", label: "Overview" },
                             { id: "trades", label: "Trades" },
@@ -210,11 +210,10 @@ export default function DashboardPage() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`px-4 py-2 rounded-md text-sm font-medium 
-                          transition ${
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
                                     activeTab === tab.id
-                                        ? "bg-blue-600 text-white"
-                                        : "text-gray-400 hover:text-white"
+                                        ? "bg-gray-800 text-gray-100 shadow-sm border border-gray-700/50"
+                                        : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/40 border border-transparent"
                                 }`}
                             >
                                 {tab.label}

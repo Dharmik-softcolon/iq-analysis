@@ -68,16 +68,16 @@ export default function MarketStatePanel({
     const mc = modeConfig[systemMode];
 
     return (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
-            <h2 className="text-white font-bold text-lg mb-4">
+        <div className="bg-gray-900/40 border border-gray-800/80 rounded-xl p-6 shadow-sm">
+            <h2 className="text-gray-100 font-semibold tracking-tight text-lg mb-4">
                 Market Overview
             </h2>
 
             <div className="grid grid-cols-2 gap-4">
                 {/* Market State */}
                 <div className={`p-4 rounded-lg border ${sc.bg}`}>
-                    <div className="text-gray-400 text-xs mb-1">MARKET STATE</div>
-                    <div className={`text-2xl font-black ${sc.color}`}>{state}</div>
+                    <div className="text-gray-500 text-[11px] font-medium tracking-wider mb-1">MARKET STATE</div>
+                    <div className={`text-2xl font-bold tracking-tight ${sc.color}`}>{state}</div>
                     <div className="text-gray-500 text-xs mt-1">{sc.desc}</div>
                 </div>
 
@@ -85,31 +85,31 @@ export default function MarketStatePanel({
                 <div
                     className={`p-4 rounded-lg border ${
                         direction === "BULL"
-                            ? "bg-green-900/30 border-green-600"
+                            ? "bg-green-900/30 border-green-600/50"
                             : direction === "BEAR"
-                                ? "bg-red-900/30 border-red-600"
-                                : "bg-gray-800 border-gray-600"
+                                ? "bg-red-900/30 border-red-600/50"
+                                : "bg-gray-800/40 border-gray-700/50"
                     }`}
                 >
-                    <div className="text-gray-400 text-xs mb-1">DIRECTION</div>
-                    <div className={`text-2xl font-black ${dc.color}`}>
+                    <div className="text-gray-500 text-[11px] font-medium tracking-wider mb-1">DIRECTION</div>
+                    <div className={`text-2xl font-bold tracking-tight ${dc.color}`}>
                         {dc.icon} {dc.label}
                     </div>
                 </div>
 
                 {/* NIFTY LTP */}
-                <div className="p-4 rounded-lg bg-gray-800 border border-gray-700">
-                    <div className="text-gray-400 text-xs mb-1">NIFTY LTP</div>
-                    <div className="text-2xl font-black text-white">
+                <div className="p-4 rounded-lg bg-gray-800/40 border border-gray-700/50">
+                    <div className="text-gray-500 text-[11px] font-medium tracking-wider mb-1">NIFTY LTP</div>
+                    <div className="text-2xl font-semibold tracking-tight text-gray-100 font-mono tabular-nums">
                         {(niftyLTP ?? 0).toLocaleString("en-IN")}
                     </div>
                 </div>
 
                 {/* PCR */}
-                <div className="p-4 rounded-lg bg-gray-800 border border-gray-700">
-                    <div className="text-gray-400 text-xs mb-1">PCR OI</div>
+                <div className="p-4 rounded-lg bg-gray-800/40 border border-gray-700/50">
+                    <div className="text-gray-500 text-[11px] font-medium tracking-wider mb-1">PCR OI</div>
                     <div
-                        className={`text-2xl font-black ${
+                        className={`text-2xl font-semibold tracking-tight font-mono tabular-nums ${
                             pcr < 0.75
                                 ? "text-red-400"
                                 : pcr > 1.3
@@ -132,13 +132,13 @@ export default function MarketStatePanel({
                 <div
                     className={`p-4 rounded-lg border ${
                         (dailyPnL ?? 0) >= 0
-                            ? "bg-green-900/20 border-green-700"
-                            : "bg-red-900/20 border-red-700"
+                            ? "bg-green-900/20 border-green-700/50"
+                            : "bg-red-900/20 border-red-700/50"
                     }`}
                 >
-                    <div className="text-gray-400 text-xs mb-1">DAILY P&L</div>
+                    <div className="text-gray-500 text-[11px] font-medium tracking-wider mb-1">DAILY P&L</div>
                     <div
-                        className={`text-2xl font-black ${
+                        className={`text-2xl font-semibold tracking-tight font-mono tabular-nums ${
                             (dailyPnL ?? 0) >= 0 ? "text-green-400" : "text-red-400"
                         }`}
                     >
@@ -148,21 +148,21 @@ export default function MarketStatePanel({
                 </div>
 
                 {/* DTE + Trades */}
-                <div className="p-4 rounded-lg bg-gray-800 border border-gray-700">
+                <div className="p-4 rounded-lg bg-gray-800/40 border border-gray-700/50">
                     <div className="flex justify-between">
                         <div>
-                            <div className="text-gray-400 text-xs mb-1">DTE</div>
+                            <div className="text-gray-500 text-[11px] font-medium tracking-wider mb-1">DTE</div>
                             <div
-                                className={`text-2xl font-black ${
-                                    (dte ?? 0) <= 1 ? "text-red-400" : "text-white"
+                                className={`text-2xl font-semibold tracking-tight font-mono tabular-nums ${
+                                    (dte ?? 0) <= 1 ? "text-red-400" : "text-gray-100"
                                 }`}
                             >
                                 {dte ?? 0}
                             </div>
                         </div>
                         <div>
-                            <div className="text-gray-400 text-xs mb-1">TRADES</div>
-                            <div className="text-2xl font-black text-white">
+                            <div className="text-gray-500 text-[11px] font-medium tracking-wider mb-1">TRADES</div>
+                            <div className="text-2xl font-semibold tracking-tight text-gray-100 font-mono tabular-nums">
                                 {tradesToday ?? 0}/2
                             </div>
                         </div>
@@ -171,9 +171,9 @@ export default function MarketStatePanel({
             </div>
 
             {/* System Mode */}
-            <div className="mt-4 flex items-center justify-between p-3 rounded-lg bg-gray-800 border border-gray-700">
-                <div className="text-gray-400 text-sm">System Mode</div>
-                <div className={`font-bold ${mc.color}`}>{mc.label}</div>
+            <div className="mt-4 flex items-center justify-between p-3 rounded-lg bg-gray-800/30 border border-gray-700/50">
+                <div className="text-gray-400 text-sm font-medium">System Mode</div>
+                <div className={`font-semibold tracking-tight ${mc.color}`}>{mc.label}</div>
             </div>
         </div>
     );
