@@ -7,133 +7,108 @@ interface Props {
 }
 
 export default function StatsPanel({ stats }: Props) {
+    const winRate = Number(stats.winRate);
+    const totalPnL = Number(stats.totalPnL);
+    const rrRatio = Number(stats.rrRatio);
+    const avgWin = Number(stats.avgWin);
+    const avgLoss = Number(stats.avgLoss);
+
+    const topMetrics = [
+        {
+            label: "Win Rate",
+            value: `${winRate}%`,
+            sub: `${stats.wins}W / ${stats.losses}L`,
+            color: winRate >= 70 ? "var(--green)" : winRate >= 50 ? "var(--yellow)" : "var(--red)",
+        },
+        {
+            label: "Total P&L",
+            value: `${totalPnL >= 0 ? "+" : ""}₹${totalPnL.toLocaleString("en-IN")}`,
+            sub: `${stats.totalTrades} closed trades`,
+            color: totalPnL >= 0 ? "var(--green)" : "var(--red)",
+        },
+        {
+            label: "Risk:Reward",
+            value: `${rrRatio}:1`,
+            sub: "Win/Loss avg ratio",
+            color: rrRatio >= 2 ? "var(--green)" : "var(--yellow)",
+        },
+        {
+            label: "Avg Win",
+            value: `+₹${avgWin.toLocaleString("en-IN")}`,
+            sub: `Avg Loss: -₹${Math.abs(avgLoss).toLocaleString("en-IN")}`,
+            color: "var(--green)",
+        },
+    ];
+
     return (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
-            <h2 className="text-white font-bold text-lg mb-4">
-                Performance Statistics
-            </h2>
-
-            {/* Top metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="p-3 bg-gray-800 rounded-lg">
-                    <div className="text-gray-400 text-xs mb-1">WIN RATE</div>
-                    <div
-                        className={`text-2xl font-black ${
-                            Number(stats.winRate) >= 70
-                                ? "text-green-400"
-                                : Number(stats.winRate) >= 50
-                                    ? "text-yellow-400"
-                                    : "text-red-400"
-                        }`}
-                    >
-                        {stats.winRate}%
+        <div className="space-y-5">
+            {/* Top KPI cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {topMetrics.map(({ label, value, sub, color }) => (
+                    <div key={label} className="card p-4">
+                        <div className="label mb-2">{label}</div>
+                        <div
+                            className="num font-black leading-none mb-1.5"
+                            style={{ fontSize: 28, color, letterSpacing: "-0.04em" }}
+                        >
+                            {value}
+                        </div>
+                        <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{sub}</div>
                     </div>
-                    <div className="text-gray-500 text-xs">
-                        {stats.wins}W / {stats.losses}L
-                    </div>
-                </div>
-
-                <div className="p-3 bg-gray-800 rounded-lg">
-                    <div className="text-gray-400 text-xs mb-1">TOTAL P&L</div>
-                    <div
-                        className={`text-2xl font-black ${
-                            Number(stats.totalPnL) >= 0
-                                ? "text-green-400"
-                                : "text-red-400"
-                        }`}
-                    >
-                        {Number(stats.totalPnL) >= 0 ? "+" : ""}₹
-                        {Number(stats.totalPnL).toLocaleString("en-IN")}
-                    </div>
-                    <div className="text-gray-500 text-xs">
-                        {stats.totalTrades} trades
-                    </div>
-                </div>
-
-                <div className="p-3 bg-gray-800 rounded-lg">
-                    <div className="text-gray-400 text-xs mb-1">R:R RATIO</div>
-                    <div
-                        className={`text-2xl font-black ${
-                            Number(stats.rrRatio) >= 2
-                                ? "text-green-400"
-                                : "text-yellow-400"
-                        }`}
-                    >
-                        {stats.rrRatio}:1
-                    </div>
-                    <div className="text-gray-500 text-xs">Win/Loss avg</div>
-                </div>
-
-                <div className="p-3 bg-gray-800 rounded-lg">
-                    <div className="text-gray-400 text-xs mb-1">AVG WIN</div>
-                    <div className="text-2xl font-black text-green-400">
-                        +₹{Number(stats.avgWin).toLocaleString("en-IN")}
-                    </div>
-                    <div className="text-gray-500 text-xs">
-                        Avg Loss: -₹{Math.abs(Number(stats.avgLoss)).toLocaleString("en-IN")}
-                    </div>
-                </div>
+                ))}
             </div>
 
-            {/* IAE Breakdown Table */}
-            <div>
-                <div className="text-gray-400 text-sm font-medium mb-3">
-                    Performance by IAE Score
+            {/* IAE breakdown table */}
+            <div className="card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                    <span className="section-title">Performance by IAE Score</span>
+                    <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
                 </div>
+
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="data-table">
                         <thead>
-                        <tr className="text-gray-500 border-b border-gray-700">
-                            <th className="text-left py-2 pr-4">IAE Score</th>
-                            <th className="text-left py-2 pr-4">Trades</th>
-                            <th className="text-left py-2 pr-4">Wins</th>
-                            <th className="text-left py-2 pr-4">Win Rate</th>
-                            <th className="text-right py-2">Avg P&L</th>
-                        </tr>
+                            <tr>
+                                <th>IAE Score</th>
+                                <th>Trades</th>
+                                <th>Wins</th>
+                                <th>Win Rate</th>
+                                <th style={{ textAlign: "right" }}>Avg P&L</th>
+                            </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-800">
-                        {Object.entries(stats.iaeBreakdown || {}).map(
-                            ([score, data]) => (
-                                <tr key={score} className="hover:bg-gray-800/50">
-                                    <td className="py-2 pr-4">
-                      <span
-                          className={`font-bold ${
-                              Number(score) >= 7
-                                  ? "text-green-400"
-                                  : Number(score) >= 5
-                                      ? "text-yellow-400"
-                                      : "text-orange-400"
-                          }`}
-                      >
-                        IAE {score}
-                      </span>
-                                    </td>
-                                    <td className="py-2 pr-4 text-white">{data.trades}</td>
-                                    <td className="py-2 pr-4 text-white">{data.wins}</td>
-                                    <td className="py-2 pr-4">
-                      <span
-                          className={
-                              Number(data.winRate) >= 70
-                                  ? "text-green-400"
-                                  : "text-yellow-400"
-                          }
-                      >
-                        {data.winRate}%
-                      </span>
-                                    </td>
-                                    <td
-                                        className={`py-2 text-right font-bold ${
-                                            Number(data.avgPnL) >= 0
-                                                ? "text-green-400"
-                                                : "text-red-400"
-                                        }`}
-                                    >
-                                        {Number(data.avgPnL) >= 0 ? "+" : ""}₹
-                                        {Number(data.avgPnL).toLocaleString("en-IN")}
-                                    </td>
-                                </tr>
-                            )
-                        )}
+                        <tbody>
+                            {Object.entries(stats.iaeBreakdown || {}).map(([score, data]) => {
+                                const avgPnL = Number(data.avgPnL);
+                                const wr = Number(data.winRate);
+                                return (
+                                    <tr key={score}>
+                                        <td>
+                                            <span
+                                                className="badge"
+                                                style={{
+                                                    background: Number(score) >= 7 ? "var(--green-dim)" : Number(score) >= 5 ? "var(--yellow-dim)" : "var(--bg-elevated)",
+                                                    borderColor: Number(score) >= 7 ? "var(--green-border)" : Number(score) >= 5 ? "var(--yellow-border)" : "var(--border-base)",
+                                                    color: Number(score) >= 7 ? "var(--green)" : Number(score) >= 5 ? "var(--yellow)" : "var(--text-secondary)",
+                                                }}
+                                            >
+                                                IAE {score}
+                                            </span>
+                                        </td>
+                                        <td><span className="num text-[12px]">{data.trades}</span></td>
+                                        <td><span className="num text-[12px]">{data.wins}</span></td>
+                                        <td>
+                                            <span className="num text-[12px] font-semibold" style={{ color: wr >= 70 ? "var(--green)" : "var(--yellow)" }}>
+                                                {data.winRate}%
+                                            </span>
+                                        </td>
+                                        <td style={{ textAlign: "right" }}>
+                                            <span className="num text-[12px] font-bold" style={{ color: avgPnL >= 0 ? "var(--green)" : "var(--red)" }}>
+                                                {avgPnL >= 0 ? "+" : ""}₹{avgPnL.toLocaleString("en-IN")}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

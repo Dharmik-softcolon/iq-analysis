@@ -15,82 +15,110 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError("");
-
         try {
             const res = await authAPI.login(email, password);
             const { token, user } = res.data;
-
             localStorage.setItem("whalehq_token", token);
             localStorage.setItem("whalehq_user", JSON.stringify(user));
-
-            // Smart Redirect: If Kite token expired, force to SSO page. Else go to Dashboard.
             if (user.hasZerodha && !user.isZerodhaConnected) {
                 router.push("/settings/zerodha");
             } else {
                 router.push("/dashboard");
             }
         } catch (err: any) {
-            setError(
-                err.response?.data?.message || "Login failed. Check credentials."
-            );
+            setError(err.response?.data?.message || "Login failed. Check credentials.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                {/* Logo */}
+        <div
+            className="min-h-screen flex items-center justify-center p-4"
+            style={{ background: "var(--bg-base)" }}
+        >
+            {/* subtle grid background */}
+            <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                    backgroundImage: `
+                        linear-gradient(var(--border-subtle) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px)
+                    `,
+                    backgroundSize: "48px 48px",
+                    opacity: 0.4,
+                }}
+            />
+
+            <div className="relative w-full max-w-sm">
+
+                {/* Brand */}
                 <div className="text-center mb-8">
-                    <div className="text-5xl mb-3">🐋</div>
-                    <h1 className="text-3xl font-black text-white">WhaleHQ</h1>
-                    <p className="text-gray-400 mt-1">v6.0 — Institutional Trading System</p>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <div
+                        className="inline-flex items-center justify-center w-12 h-12 mb-4 text-2xl"
+                        style={{
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border-base)",
+                            borderRadius: "2px",
+                        }}
+                    >
+                        🐋
+                    </div>
+                    <h1 className="text-2xl font-black tracking-tight text-white">WhaleHQ</h1>
+                    <p className="text-[12px] font-medium mt-1" style={{ color: "var(--text-secondary)" }}>
+                        v6.0 — Institutional Trading System
+                    </p>
+                    <p className="text-[11px] mt-0.5 uppercase tracking-widest font-semibold" style={{ color: "var(--text-muted)" }}>
                         NIFTY Weekly Options Engine
                     </p>
                 </div>
 
-                {/* Form */}
-                <div className="bg-gray-900 border border-gray-700 rounded-xl p-8">
-                    <h2 className="text-white font-bold text-xl mb-6">Sign In</h2>
+                {/* Card */}
+                <div
+                    style={{
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-base)",
+                        borderRadius: "3px",
+                        padding: "32px",
+                    }}
+                >
+                    <div className="section-title mb-5">Sign In</div>
 
                     {error && (
-                        <div className="mb-4 p-3 bg-red-900/30 border border-red-700
-                            rounded-lg text-red-400 text-sm">
+                        <div
+                            className="mb-4 px-3 py-2.5 text-[11px] font-medium"
+                            style={{
+                                background: "var(--red-dim)",
+                                border: "1px solid var(--red-border)",
+                                color: "var(--red)",
+                                borderRadius: "2px",
+                            }}
+                        >
                             {error}
                         </div>
                     )}
 
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div>
-                            <label className="text-gray-400 text-sm block mb-2">
-                                Email
-                            </label>
+                            <label className="label block mb-2">Email</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full bg-gray-800 border border-gray-600
-                           rounded-lg px-4 py-3 text-white
-                           focus:outline-none focus:border-blue-500"
+                                className="input"
                                 placeholder="your@email.com"
                             />
                         </div>
 
                         <div>
-                            <label className="text-gray-400 text-sm block mb-2">
-                                Password
-                            </label>
+                            <label className="label block mb-2">Password</label>
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
-                                className="w-full bg-gray-800 border border-gray-600
-                           rounded-lg px-4 py-3 text-white
-                           focus:outline-none focus:border-blue-500"
+                                className="input"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -98,30 +126,26 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 bg-blue-600 hover:bg-blue-500
-                         text-white rounded-lg font-bold transition
-                         disabled:opacity-50"
+                            className="btn btn-primary w-full mt-2"
+                            style={{ padding: "11px 16px", fontSize: "12px" }}
                         >
-                            {loading ? "Signing in..." : "Sign In →"}
+                            {loading ? "Authenticating···" : "Sign In →"}
                         </button>
                     </form>
 
-                    <div className="mt-4 text-center">
-            <span className="text-gray-500 text-sm">
-              No account?{" "}
-            </span>
-                        <a
-                            href="/register"
-                            className="text-blue-400 text-sm hover:underline"
-                        >
-                            Register
-                        </a>
+                    <div className="mt-5 pt-4 text-center" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                        <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                            No account?{" "}
+                            <a href="/register" className="font-semibold transition-colors" style={{ color: "var(--blue)" }}>
+                                Register
+                            </a>
+                        </span>
                     </div>
                 </div>
 
                 {/* Disclaimer */}
-                <p className="text-gray-600 text-xs text-center mt-6">
-                    For authorized users only. Trading involves risk.
+                <p className="text-[10px] text-center mt-5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                    For authorized users only. Trading involves risk.<br />
                     Past performance does not guarantee future results.
                 </p>
             </div>

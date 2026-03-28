@@ -14,166 +14,132 @@ export default function ActiveTrade({ trades, onUpdate }: Props) {
 
     const handleManualExit = async (signalId: string) => {
         if (!confirm("Emergency exit? This will sell at market price.")) return;
-
         setExiting(signalId);
-        try {
-            await tradeAPI.manualExit(signalId, "Manual exit from UI");
-            onUpdate();
-        } catch {
-            alert("Exit failed. Please check manually on Zerodha.");
-        } finally {
-            setExiting(null);
-        }
+        try { await tradeAPI.manualExit(signalId, "Manual exit from UI"); onUpdate(); }
+        catch { alert("Exit failed. Please check manually on Zerodha."); }
+        finally { setExiting(null); }
     };
 
     if (trades.length === 0) {
         return (
-            <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
-                <h2 className="text-white font-bold text-lg mb-4">
-                    Active Positions
-                </h2>
-                <div className="text-center py-8 text-gray-500">
-                    <div className="text-4xl mb-2">🎯</div>
-                    <div>No active positions</div>
-                    <div className="text-sm mt-1">System monitoring markets...</div>
+            <div className="card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                    <span className="section-title">Active Positions</span>
+                    <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
+                </div>
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <div className="text-3xl opacity-20">◎</div>
+                    <div className="text-[12px] font-semibold" style={{ color: "var(--text-secondary)" }}>No active positions</div>
+                    <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>System monitoring markets in real-time</div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
-            <h2 className="text-white font-bold text-lg mb-4">
-                Active Positions ({trades.length})
-            </h2>
+        <div className="card p-5">
+            <div className="flex items-center gap-2 mb-4">
+                <span className="section-title">Active Positions</span>
+                <span
+                    className="px-2 py-0.5 text-[9px] font-bold num"
+                    style={{ background: "var(--blue-dim)", border: "1px solid var(--blue-border)", color: "var(--blue)", borderRadius: "2px" }}
+                >
+                    {trades.length}
+                </span>
+                <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
+            </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {trades.map((trade) => {
-                    const pnlColor =
-                        (trade.totalPnL ?? 0) >= 0 ? "text-green-400" : "text-red-400";
+                    const pnlPos = (trade.totalPnL ?? 0) >= 0;
+                    const isBull = trade.direction === "BULL";
 
                     return (
                         <div
                             key={trade._id}
-                            className={`p-4 rounded-lg border ${
-                                trade.direction === "BULL"
-                                    ? "border-green-700 bg-green-900/10"
-                                    : "border-red-700 bg-red-900/10"
-                            }`}
+                            style={{
+                                background: isBull ? "rgba(34,208,122,0.04)" : "rgba(240,75,75,0.04)",
+                                border: `1px solid ${isBull ? "var(--green-border)" : "var(--red-border)"}`,
+                                borderLeft: `3px solid ${isBull ? "var(--green)" : "var(--red)"}`,
+                                borderRadius: "2px",
+                                padding: "14px 16px",
+                            }}
                         >
-                            {/* Header */}
+                            {/* Row 1: Header */}
                             <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-3">
-                  <span
-                      className={`px-2 py-1 rounded text-xs font-bold ${
-                          trade.direction === "BULL"
-                              ? "bg-green-900 text-green-400"
-                              : "bg-red-900 text-red-400"
-                      }`}
-                  >
-                    {trade.direction === "BULL" ? "▲ BULL" : "▼ BEAR"}
-                  </span>
-                                    <span className="text-white font-bold">
-                    {trade.strike} {trade.optionType}
-                  </span>
-                                    <span className="text-gray-400 text-sm">
-                    IAE:{trade.iaeScore}
-                  </span>
+                                <div className="flex items-center gap-2.5">
+                                    <span
+                                        className="badge"
+                                        style={{
+                                            background: isBull ? "var(--green-dim)" : "var(--red-dim)",
+                                            borderColor: isBull ? "var(--green-border)" : "var(--red-border)",
+                                            color: isBull ? "var(--green)" : "var(--red)",
+                                        }}
+                                    >
+                                        {isBull ? "▲" : "▼"} {trade.direction}
+                                    </span>
+                                    <span className="text-[13px] font-bold text-white num">
+                                        {trade.strike} {trade.optionType}
+                                    </span>
+                                    <span className="text-[10px] font-semibold" style={{ color: "var(--text-secondary)" }}>
+                                        IAE {trade.iaeScore}
+                                    </span>
                                 </div>
-                                <div className={`font-bold ${pnlColor}`}>
-                                    {(trade.totalPnL ?? 0) >= 0 ? "+" : ""}₹
-                                    {(trade.totalPnL ?? 0).toLocaleString("en-IN")}
+                                <div
+                                    className="num text-[14px] font-bold"
+                                    style={{ color: pnlPos ? "var(--green)" : "var(--red)" }}
+                                >
+                                    {pnlPos ? "+" : ""}₹{(trade.totalPnL ?? 0).toLocaleString("en-IN")}
                                 </div>
                             </div>
 
-                            {/* Entry details */}
-                            <div className="grid grid-cols-3 gap-2 mb-3 text-sm">
-                                <div>
-                                    <div className="text-gray-500 text-xs">Entry</div>
-                                    <div className="text-white font-medium">
-                                        ₹{trade.entryPremium}
+                            {/* Row 2: Key metrics */}
+                            <div className="grid grid-cols-3 gap-3 mb-3 pb-3" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                {[
+                                    { label: "Entry Premium", value: `₹${trade.entryPremium}` },
+                                    { label: "Total Lots",    value: String(trade.totalLots) },
+                                    { label: "Capital Deployed", value: `₹${trade.capitalDeployed?.toLocaleString("en-IN")}` },
+                                ].map(({ label, value }) => (
+                                    <div key={label}>
+                                        <div className="label mb-0.5">{label}</div>
+                                        <div className="num text-[12px] font-semibold text-white">{value}</div>
                                     </div>
-                                </div>
-                                <div>
-                                    <div className="text-gray-500 text-xs">Lots</div>
-                                    <div className="text-white font-medium">
-                                        {trade.totalLots}
-                                    </div>
-                                </div>
-                                <div>
-                                    <div className="text-gray-500 text-xs">Deployed</div>
-                                    <div className="text-white font-medium">
-                                        ₹{trade.capitalDeployed?.toLocaleString("en-IN")}
-                                    </div>
-                                </div>
+                                ))}
                             </div>
 
-                            {/* Tranches */}
-                            <div className="space-y-2 mb-3">
-                                {/* T1 */}
-                                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">
-                    T1 ({trade.t1Lots} lots) → ₹{trade.t1Target} (+40%)
-                  </span>
-                                    <span
-                                        className={
-                                            trade.t1Exited ? "text-green-400" : "text-gray-500"
-                                        }
-                                    >
-                    {trade.t1Exited
-                        ? `✅ ₹${trade.t1PnL?.toFixed(0)}`
-                        : "Pending"}
-                  </span>
-                                </div>
-                                {/* T2 */}
-                                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">
-                    T2 ({trade.t2Lots} lots) → ₹{trade.t2Target} (+80%)
-                  </span>
-                                    <span
-                                        className={
-                                            trade.t2Exited ? "text-green-400" : "text-gray-500"
-                                        }
-                                    >
-                    {trade.t2Exited
-                        ? `✅ ₹${trade.t2PnL?.toFixed(0)}`
-                        : "Pending"}
-                  </span>
-                                </div>
-                                {/* T3 */}
-                                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">
-                    T3 ({trade.t3Lots} lots) → 20% Trail
-                  </span>
-                                    <span
-                                        className={
-                                            trade.t3Exited ? "text-green-400" : "text-blue-400"
-                                        }
-                                    >
-                    {trade.t3Exited
-                        ? `✅ ₹${trade.t3PnL?.toFixed(0)}`
-                        : "🔄 Running"}
-                  </span>
-                                </div>
+                            {/* Row 3: Tranches */}
+                            <div className="space-y-1.5 mb-3">
+                                {[
+                                    { label: `T1 · ${trade.t1Lots} lots`, target: `₹${trade.t1Target} (+40%)`, exited: trade.t1Exited, pnl: trade.t1PnL },
+                                    { label: `T2 · ${trade.t2Lots} lots`, target: `₹${trade.t2Target} (+80%)`, exited: trade.t2Exited, pnl: trade.t2PnL },
+                                    { label: `T3 · ${trade.t3Lots} lots`, target: "20% Trail",                 exited: trade.t3Exited, pnl: trade.t3PnL, running: true },
+                                ].map(({ label, target, exited, pnl, running }) => (
+                                    <div key={label} className="flex items-center justify-between text-[11px]">
+                                        <span style={{ color: "var(--text-secondary)" }}>
+                                            {label} <span style={{ color: "var(--text-muted)" }}>→ {target}</span>
+                                        </span>
+                                        <span className="num font-semibold" style={{
+                                            color: exited ? "var(--green)" : running ? "var(--blue)" : "var(--text-muted)"
+                                        }}>
+                                            {exited ? `+₹${pnl?.toFixed(0)}` : running ? "Running" : "Pending"}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
 
-                            {/* SL Levels */}
-                            <div className="flex gap-4 text-xs text-gray-500 mb-3">
-                                <span>Premium SL: ₹{trade.slPremium}</span>
-                                <span>Index SL: {trade.adverseIndexSL}</span>
+                            {/* Row 4: SL levels */}
+                            <div className="flex gap-4 mb-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                                <span>Premium SL: <span className="num text-white">₹{trade.slPremium}</span></span>
+                                <span>Index SL: <span className="num text-white">{trade.adverseIndexSL}</span></span>
                             </div>
 
                             {/* Emergency exit */}
                             <button
                                 onClick={() => handleManualExit(trade.signalId)}
                                 disabled={exiting === trade.signalId}
-                                className="w-full py-2 bg-red-900/50 border border-red-700
-                           text-red-400 rounded-lg text-sm font-bold
-                           hover:bg-red-800/50 transition disabled:opacity-50"
+                                className="btn btn-danger w-full text-[10px]"
                             >
-                                {exiting === trade.signalId
-                                    ? "Exiting..."
-                                    : "🚨 Emergency Exit (Market)"}
+                                {exiting === trade.signalId ? "Exiting···" : "⚡ Emergency Exit at Market"}
                             </button>
                         </div>
                     );

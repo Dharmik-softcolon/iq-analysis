@@ -9,157 +9,134 @@ interface Props {
     onUpdate: () => void;
 }
 
-export default function SystemControls({
-                                           isAutoTrading,
-                                           capital,
-                                           onUpdate,
-                                       }: Props) {
+export default function SystemControls({ isAutoTrading, capital, onUpdate }: Props) {
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [newCapital, setNewCapital] = useState(capital.toString());
     const [isChoppy, setIsChoppy] = useState(false);
     const [isTrend, setIsTrend] = useState(false);
 
     const toggleAutoTrading = async () => {
-        if (
-            !isAutoTrading &&
-            !confirm(
-                "Enable auto trading? System will place real orders using Zerodha."
-            )
-        )
-            return;
-
+        if (!isAutoTrading && !confirm("Enable auto trading? System will place real orders using Zerodha.")) return;
         setLoading(true);
-        try {
-            await systemAPI.toggleAutoTrading();
-            onUpdate();
-        } catch {
-            alert("Failed to toggle auto trading");
-        } finally {
-            setLoading(false);
-        }
+        try { await systemAPI.toggleAutoTrading(); onUpdate(); }
+        catch { alert("Failed to toggle auto trading"); }
+        finally { setLoading(false); }
     };
 
     const saveSettings = async () => {
+        setSaving(true);
         try {
-            await systemAPI.updateSettings({
-                capital: Number(newCapital),
-                isChoppyMonth: isChoppy,
-                isTrendMonth: isTrend,
-            });
-            alert("Settings saved");
+            await systemAPI.updateSettings({ capital: Number(newCapital), isChoppyMonth: isChoppy, isTrendMonth: isTrend });
             onUpdate();
-        } catch {
-            alert("Failed to save settings");
-        }
+        } catch { alert("Failed to save settings"); }
+        finally { setSaving(false); }
     };
 
-    return (
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-6">
-            <h2 className="text-white font-bold text-lg mb-4">
-                System Controls
-            </h2>
+    const monthType = isChoppy ? "choppy" : isTrend ? "trend" : "normal";
 
-            {/* Auto Trading Toggle */}
-            <div className="mb-6 p-4 rounded-lg bg-gray-800 border border-gray-700">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <div className="text-white font-medium">Auto Trading</div>
-                        <div className="text-gray-400 text-sm">
-                            {isAutoTrading
-                                ? "🟢 LIVE — Real orders being placed"
-                                : "🔴 DISABLED — Paper mode"}
-                        </div>
-                    </div>
-                    <button
-                        onClick={toggleAutoTrading}
-                        disabled={loading}
-                        className={`px-6 py-3 rounded-lg font-bold transition ${
-                            isAutoTrading
-                                ? "bg-red-700 hover:bg-red-600 text-white"
-                                : "bg-green-700 hover:bg-green-600 text-white"
-                        } disabled:opacity-50`}
-                    >
-                        {loading
-                            ? "..."
-                            : isAutoTrading
-                                ? "DISABLE"
-                                : "ENABLE"}
-                    </button>
-                </div>
+    return (
+        <div className="card p-5 flex flex-col gap-4">
+            {/* Title */}
+            <div className="flex items-center gap-2">
+                <span className="section-title">System Controls</span>
+                <div className="flex-1 h-px" style={{ background: "var(--border-subtle)" }} />
             </div>
 
-            {/* Capital Setting */}
-            <div className="mb-4">
-                <label className="text-gray-400 text-sm block mb-2">
-                    Trading Capital (₹)
-                </label>
+            {/* Auto Trading */}
+            <div
+                className="flex items-center justify-between p-4"
+                style={{
+                    background: isAutoTrading ? "rgba(240,75,75,0.06)" : "var(--bg-elevated)",
+                    border: `1px solid ${isAutoTrading ? "var(--red-border)" : "var(--border-base)"}`,
+                    borderRadius: "2px",
+                }}
+            >
+                <div>
+                    <div className="text-[12px] font-bold text-white mb-0.5">Auto Trading</div>
+                    <div className="flex items-center gap-1.5">
+                        <span
+                            className="pulse-dot"
+                            style={{
+                                background: isAutoTrading ? "var(--green)" : "var(--red)",
+                                boxShadow: isAutoTrading ? "0 0 6px rgba(34,208,122,0.6)" : "none",
+                            }}
+                        />
+                        <span className="text-[10px] font-semibold tracking-wide" style={{ color: isAutoTrading ? "var(--green)" : "var(--red)" }}>
+                            {isAutoTrading ? "LIVE — Real orders placed via Zerodha" : "DISABLED — Paper mode active"}
+                        </span>
+                    </div>
+                </div>
+                <button
+                    onClick={toggleAutoTrading}
+                    disabled={loading}
+                    className={`btn ${isAutoTrading ? "btn-danger" : "btn-success"}`}
+                    style={{ minWidth: 80 }}
+                >
+                    {loading ? "···" : isAutoTrading ? "Disable" : "Enable"}
+                </button>
+            </div>
+
+            {/* Capital */}
+            <div>
+                <label className="label block mb-2">Trading Capital (₹)</label>
                 <input
                     type="number"
                     value={newCapital}
                     onChange={(e) => setNewCapital(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-600 rounded-lg
-                     px-4 py-2 text-white focus:outline-none
-                     focus:border-blue-500"
+                    className="input"
+                    placeholder="500000"
                 />
             </div>
 
-            {/* Month Type */}
-            <div className="mb-4">
-                <label className="text-gray-400 text-sm block mb-2">
-                    Month Classification
-                </label>
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => { setIsChoppy(false); setIsTrend(false); }}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium border ${
-                            !isChoppy && !isTrend
-                                ? "bg-blue-900 border-blue-600 text-blue-400"
-                                : "bg-gray-800 border-gray-600 text-gray-400"
-                        }`}
-                    >
-                        Normal
-                    </button>
-                    <button
-                        onClick={() => { setIsChoppy(true); setIsTrend(false); }}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium border ${
-                            isChoppy
-                                ? "bg-orange-900 border-orange-600 text-orange-400"
-                                : "bg-gray-800 border-gray-600 text-gray-400"
-                        }`}
-                    >
-                        Choppy
-                    </button>
-                    <button
-                        onClick={() => { setIsTrend(true); setIsChoppy(false); }}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium border ${
-                            isTrend
-                                ? "bg-green-900 border-green-600 text-green-400"
-                                : "bg-gray-800 border-gray-600 text-gray-400"
-                        }`}
-                    >
-                        Trending
-                    </button>
+            {/* Month type */}
+            <div>
+                <label className="label block mb-2">Month Classification</label>
+                <div className="grid grid-cols-3 gap-2">
+                    {[
+                        { id: "normal", label: "Normal",   action: () => { setIsChoppy(false); setIsTrend(false); }, activeColor: "var(--blue)", activeBg: "var(--blue-dim)", activeBorder: "var(--blue-border)" },
+                        { id: "choppy", label: "Choppy",   action: () => { setIsChoppy(true); setIsTrend(false); },  activeColor: "#F97316", activeBg: "#1A0D00", activeBorder: "#6B3010" },
+                        { id: "trend",  label: "Trending", action: () => { setIsTrend(true); setIsChoppy(false); },  activeColor: "var(--green)", activeBg: "var(--green-dim)", activeBorder: "var(--green-border)" },
+                    ].map(({ id, label, action, activeColor, activeBg, activeBorder }) => {
+                        const active = monthType === id;
+                        return (
+                            <button
+                                key={id}
+                                onClick={action}
+                                className="btn text-[10px] py-2"
+                                style={{
+                                    background: active ? activeBg : "var(--bg-elevated)",
+                                    borderColor: active ? activeBorder : "var(--border-base)",
+                                    color: active ? activeColor : "var(--text-secondary)",
+                                }}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
             {/* Save */}
-            <button
-                onClick={saveSettings}
-                className="w-full py-3 bg-blue-700 hover:bg-blue-600
-                   text-white rounded-lg font-bold transition"
-            >
-                Save Settings
+            <button onClick={saveSettings} disabled={saving} className="btn btn-primary w-full">
+                {saving ? "Saving···" : "Save Settings"}
             </button>
 
-            {/* Warning */}
+            {/* Live trading warning */}
             {isAutoTrading && (
-                <div className="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg">
-                    <div className="text-red-400 text-sm font-bold mb-1">
-                        ⚠️ LIVE TRADING ACTIVE
+                <div
+                    className="p-3"
+                    style={{
+                        background: "var(--red-dim)",
+                        border: "1px solid var(--red-border)",
+                        borderRadius: "2px",
+                    }}
+                >
+                    <div className="text-[11px] font-bold tracking-wide mb-1" style={{ color: "var(--red)" }}>
+                        ⚠ LIVE TRADING ACTIVE
                     </div>
-                    <div className="text-red-300 text-xs">
-                        Real money is at risk. System is placing live orders on Zerodha.
-                        Monitor constantly. Emergency exit available on active positions.
+                    <div className="text-[10px] leading-relaxed" style={{ color: "#F87171" }}>
+                        Real capital is deployed. Monitor positions constantly. Emergency exit available on the Positions tab.
                     </div>
                 </div>
             )}

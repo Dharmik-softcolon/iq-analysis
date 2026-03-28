@@ -7,12 +7,7 @@ interface IndexData {
     instrument_token: number;
     timestamp: string;
     last_price: number;
-    ohlc: {
-        open: number;
-        high: number;
-        low: number;
-        close: number;
-    };
+    ohlc: { open: number; high: number; low: number; close: number };
 }
 
 interface IndicesResponse {
@@ -28,52 +23,56 @@ export default function TopBarIndices() {
 
     useEffect(() => {
         let mounted = true;
-        
-        const fetchIndices = async () => {
+        const fetch = async () => {
             try {
                 const res = await systemAPI.getIndices();
-                if (res.data?.success && mounted) {
-                    setData(res.data.data);
-                    setError(false);
-                } else {
-                    if (mounted) setError(true);
-                }
-            } catch (err) {
-                if (mounted) setError(true);
-            }
+                if (res.data?.success && mounted) { setData(res.data.data); setError(false); }
+                else if (mounted) setError(true);
+            } catch { if (mounted) setError(true); }
         };
-
-        fetchIndices();
-        const interval = setInterval(fetchIndices, 2000);
-
-        return () => {
-            mounted = false;
-            clearInterval(interval);
-        };
+        fetch();
+        const iv = setInterval(fetch, 2000);
+        return () => { mounted = false; clearInterval(iv); };
     }, []);
 
     const renderIndex = (name: string, indexData: IndexData | null) => {
         if (!indexData) return null;
-
         const ltp = indexData.last_price;
-        const prevClose = indexData.ohlc?.close || ltp;
-        const diff = ltp - prevClose;
-        const pctDiff = prevClose > 0 ? (diff / prevClose) * 100 : 0;
-        
+        const prev = indexData.ohlc?.close || ltp;
+        const diff = ltp - prev;
+        const pct = prev > 0 ? (diff / prev) * 100 : 0;
         const isUp = diff >= 0;
-        const colorClass = isUp ? "text-green-400" : "text-red-400";
         const sign = isUp ? "+" : "";
 
         return (
-            <div className={`flex flex-col mx-2 px-3 py-1 bg-gray-900/40 rounded border border-gray-800/80`}>
-                <span className="text-[10px] text-gray-400 uppercase font-medium tracking-wide mb-0.5">{name}</span>
-                <div className="flex items-baseline gap-2 font-mono tabular-nums">
-                    <span className={`text-sm tracking-tight text-gray-100 ${colorClass.replace('400', '500')}`}>
-                        {ltp.toFixed(2)}
-                    </span>
-                    <span className={`text-xs ${colorClass}`}>
-                        {sign}{diff.toFixed(2)} ({sign}{pctDiff.toFixed(2)}%)
-                    </span>
+            <div
+                key={name}
+                className="flex items-center gap-2.5 px-3 py-1.5"
+                style={{
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border-base)",
+                    borderRadius: "2px",
+                    minWidth: 140,
+                }}
+            >
+                <div>
+                    <div className="text-[9px] font-bold uppercase tracking-[0.1em]" style={{ color: "var(--text-muted)" }}>
+                        {name}
+                    </div>
+                    <div className="flex items-baseline gap-2 mt-0.5">
+                        <span className="num text-[12px] font-bold" style={{ color: "var(--text-primary)" }}>
+                            {ltp.toFixed(2)}
+                        </span>
+                        <span className="num text-[10px] font-semibold" style={{ color: isUp ? "var(--green)" : "var(--red)" }}>
+                            {sign}{pct.toFixed(2)}%
+                        </span>
+                    </div>
+                </div>
+                <div
+                    className="text-[10px] font-bold"
+                    style={{ color: isUp ? "var(--green)" : "var(--red)", alignSelf: "center", marginLeft: "auto" }}
+                >
+                    {isUp ? "▲" : "▼"}
                 </div>
             </div>
         );
@@ -81,8 +80,18 @@ export default function TopBarIndices() {
 
     if (error) {
         return (
-            <a href="/settings/zerodha" className="flex items-center text-xs text-red-500 bg-red-900/20 px-4 py-1 rounded border border-red-900 mx-4 cursor-pointer hover:bg-red-900/40">
-                Zerodha Login Required — Click to Connect
+            <a
+                href="/settings/zerodha"
+                className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-opacity hover:opacity-80"
+                style={{
+                    background: "var(--red-dim)",
+                    border: "1px solid var(--red-border)",
+                    color: "var(--red)",
+                    borderRadius: "2px",
+                }}
+            >
+                <span className="pulse-dot bg-[var(--red)] animate-pulse" />
+                Zerodha Login Required
             </a>
         );
     }
@@ -90,7 +99,7 @@ export default function TopBarIndices() {
     if (!data) return null;
 
     return (
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
             {renderIndex("Nifty 50", data.nifty)}
             {renderIndex("Bank Nifty", data.bankNifty)}
             {renderIndex("Sensex", data.sensex)}
