@@ -49,7 +49,7 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<TradeStats | null>(null);
     const [user, setUser] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<
-        "overview" | "trades" | "stats"
+        "overview" | "trades" | "stats" | "positions" | "alerts" | "curve"
     >("overview");
     const [lastUpdated, setLastUpdated] = useState<string>("");
 
@@ -198,19 +198,26 @@ export default function DashboardPage() {
                 {/* Secondary Header Row: Tabs + Margins */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     {/* Tab navigation */}
-                    <div className="flex gap-1 bg-gray-900 border border-gray-700 rounded-lg p-1 w-fit">
-                        {(["overview", "trades", "stats"] as const).map((tab) => (
+                    <div className="flex gap-1 bg-gray-900 border border-gray-700 rounded-lg p-1 w-fit flex-wrap">
+                        {[
+                            { id: "overview", label: "Overview" },
+                            { id: "trades", label: "Trades" },
+                            { id: "stats", label: "Stats" },
+                            { id: "positions", label: "Active Positions" },
+                            { id: "alerts", label: "Live Alerts" },
+                            { id: "curve", label: "Cumulative P&L Curve" },
+                        ].map((tab) => (
                             <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
                                 className={`px-4 py-2 rounded-md text-sm font-medium 
-                          capitalize transition ${
-                                    activeTab === tab
+                          transition ${
+                                    activeTab === tab.id
                                         ? "bg-blue-600 text-white"
                                         : "text-gray-400 hover:text-white"
                                 }`}
                             >
-                                {tab}
+                                {tab.label}
                             </button>
                         ))}
                     </div>
@@ -240,23 +247,13 @@ export default function DashboardPage() {
                             />
                         </div>
 
-                        {/* Middle row */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <ActiveTrade
-                                trades={activeTrades}
-                                onUpdate={loadData}
-                            />
+                        {/* System Controls row */}
+                        <div className="max-w-2xl">
                             <SystemControls
                                 isAutoTrading={user?.isAutoTrading || false}
                                 capital={user?.capital || 500000}
                                 onUpdate={loadData}
                             />
-                        </div>
-
-                        {/* P&L Chart */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <PnLChart trades={tradeHistory} />
-                            <AlertPanel />
                         </div>
 
                     </div>
@@ -265,12 +262,6 @@ export default function DashboardPage() {
                 {/* Trades Tab */}
                 {activeTab === "trades" && (
                     <div className="space-y-6">
-                        {activeTrades.length > 0 && (
-                            <ActiveTrade
-                                trades={activeTrades}
-                                onUpdate={loadData}
-                            />
-                        )}
                         <TradeHistory trades={tradeHistory} />
                     </div>
                 )}
@@ -279,6 +270,29 @@ export default function DashboardPage() {
                 {activeTab === "stats" && stats && (
                     <div className="space-y-6">
                         <StatsPanel stats={stats} />
+                    </div>
+                )}
+
+                {/* Positions Tab */}
+                {activeTab === "positions" && (
+                    <div className="space-y-6">
+                        <ActiveTrade
+                            trades={activeTrades}
+                            onUpdate={loadData}
+                        />
+                    </div>
+                )}
+
+                {/* Alerts Tab */}
+                {activeTab === "alerts" && (
+                    <div className="space-y-6">
+                        <AlertPanel />
+                    </div>
+                )}
+
+                {/* Curve Tab */}
+                {activeTab === "curve" && (
+                    <div className="space-y-6">
                         <PnLChart trades={tradeHistory} />
                     </div>
                 )}
