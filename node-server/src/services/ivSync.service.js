@@ -276,87 +276,224 @@ async function _syncTodayFromKite(dateStr) {
 // Handles the three known Sensibull response shapes.
 // Logs raw structure ONCE for verification during first run.
 // ─────────────────────────────────────────────────────────────────────────────
+// Resets each server restart so the structure is logged on the first call only
 let _firstParseDone = false;
 
+/**
+ * _parseSensibullResponse()
+ *
+ * Self-discovering, format-agnostic parser.
+ * Sensibull has changed their response structure multiple times.
+ * Instead of hard-coding key names, we now:
+ *   1. Build a flat list of "containers" to search: [rootObj, payload, payload.data, ...]
+ *   2. In each container, scan every value that is a non-empty Array
+ *   3. Try to decode it as:
+ *        a) [[epoch/dateStr, iv], ...]   → array of 2-element tuples
+ *        b) [{date, iv, ...}, ...]       → array of objects
+ *   4. Return the first container+key combo that yields parseable records
+ *
+ * Supported IV field names: iv, IV, value, close, atm_iv, atmiv
+ * Supported date field names: date, Date, timestamp, time, dt
+ *
+ * If nothing is found, logs the full structure at WARN for easy diagnosis.
+ */
 function _parseSensibullResponse(rawData) {
+    // ── Diagnostic logging (first call only) ─────────────────────────────────
     if (!_firstParseDone) {
-        logger.info(
-            "[IVSync] Sensibull raw keys: " + JSON.stringify(Object.keys(rawData || {}))
-        );
-        const firstArr = rawData && Object.values(rawData).find(Array.isArray);
-        if (firstArr) {
+        _firstParseDone = true;
+        const rootKeys    = Object.keys(rawData || {});
+        const payloadKeys = rawData?.payload && typeof rawData.payload === "object"
+            ? Object.keys(rawData.payload)
+            : null;
+
+        logger.info("[IVSync] Sensibull root keys: " + JSON.stringify(rootKeys));
+        if (payloadKeys) {
+            logger.info("[IVSync] Sensibull payload keys: " + JSON.stringify(payloadKeys));
+        }
+
+        // Log a sample from any array found in this response for manual inspection
+        const findFirstArray = (obj) => {
+            if (!obj || typeof obj !== "object") return null;
+            for (const val of Object.values(obj)) {
+                if (Array.isArray(val) && val.length > 0) return val;
+                if (val && typeof val === "object") {
+                    const nested = findFirstArray(val);
+                    if (nested) return nested;
+                }
+            }
+            return null;
+        };
+        const sampleArr = findFirstArray(rawData);
+        if (sampleArr) {
             logger.info(
-                "[IVSync] Sensibull sample (first 3): " +
-                JSON.stringify(firstArr.slice(0, 3))
+                "[IVSync] Sensibull first array sample (3 items): " +
+                JSON.stringify(sampleArr.slice(0, 3))
             );
         }
-        _firstParseDone = true;
     }
 
-    const records = [];
-
-    // Shape 1: { payload: { chart_data: [[epochMs, iv], ...] } }
-    if (rawData?.payload?.chart_data && Array.isArray(rawData.payload.chart_data)) {
-        logger.info("[IVSync] Sensibull format: payload.chart_data");
-        rawData.payload.chart_data.forEach(([epochOrDate, iv]) => {
-            const date = _toDateStr(epochOrDate);
-            if (date && typeof iv === "number") {
-                records.push({ date, iv: parseFloat(iv.toFixed(4)) });
-            }
-        });
-        return records;
-    }
-
-    // Shape 2a: { data: [[epoch, iv], ...] }
-    if (rawData?.data && Array.isArray(rawData.data)) {
-        const first = rawData.data[0];
-        if (Array.isArray(first)) {
-            logger.info("[IVSync] Sensibull format: data (array of arrays)");
-            rawData.data.forEach(([epochOrDate, iv]) => {
-                const date = _toDateStr(epochOrDate);
-                if (date && typeof iv === "number") {
-                    records.push({ date, iv: parseFloat(iv.toFixed(4)) });
+    // ── Build list of containers to search ───────────────────────────────────
+    // We check root first, then any nested object one level deep.
+    const containers = [rawData];
+    if (rawData && typeof rawData === "object" && !Array.isArray(rawData)) {
+        for (const val of Object.values(rawData)) {
+            if (val && typeof val === "object" && !Array.isArray(val)) {
+                containers.push(val);
+                // One more level (e.g. payload.data_obj.chart_data)
+                for (const innerVal of Object.values(val)) {
+                    if (innerVal && typeof innerVal === "object" && !Array.isArray(innerVal)) {
+                        containers.push(innerVal);
+                    }
                 }
-            });
-            return records;
+            }
         }
+    }
 
-        // Shape 2b: { data: [{date, iv}, ...] }
-        if (first && typeof first === "object") {
-            logger.info("[IVSync] Sensibull format: data (object array)");
-            rawData.data.forEach((item) => {
-                const date = _toDateStr(item.date || item.Date || item.timestamp);
-                const iv   = item.iv || item.IV || item.value;
-                if (date && typeof iv === "number") {
+    // Also handle root array directly
+    if (Array.isArray(rawData)) {
+        containers.unshift({ __root__: rawData });
+    }
+
+    const IV_KEYS   = ["iv", "IV", "value", "close", "atm_iv", "atmiv", "impliedVolatility"];
+    const DATE_KEYS = ["date", "Date", "timestamp", "time", "dt", "Date_IST"];
+
+    // ── Search each container ─────────────────────────────────────────────────
+    const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+    for (const container of containers) {
+        if (!container || typeof container !== "object") continue;
+
+        // ── Type C: date-keyed object map ─────────────────────────────────────
+        // Sensibull's current iv_ohlc_data format (as of 2026):
+        //   { "2025-02-28": { close: 13.1, open: 12.5, high: 14.2, low: 11.8 }, ... }
+        // Keys ARE the dates; values are plain objects containing IV as OHLC fields.
+        // "close" = end-of-day IV — the value we persist.
+        const containerEntries = Object.entries(container);
+        const dateEntries = containerEntries.filter(
+            ([k, v]) => DATE_PATTERN.test(k) && v && typeof v === "object" && !Array.isArray(v)
+        );
+
+        if (dateEntries.length >= 5) {
+            // Log the field names inside the first date object for diagnostics
+            if (!_firstParseDone || dateEntries.length > 0) {
+                const sampleItem = dateEntries[0];
+                if (sampleItem) {
+                    logger.info(
+                        `[IVSync] Type C date-entry sample keys: ` +
+                        JSON.stringify(Object.keys(sampleItem[1])) +
+                        ` | sample values: ` + JSON.stringify(sampleItem[1])
+                    );
+                }
+            }
+
+            const records = [];
+            for (const [dateStr, item] of dateEntries) {
+                // Find IV: prefer explicit iv/IV fields, then fall back to close
+                // (iv_ohlc_data stores OHLC of implied volatility — close = EOD IV)
+                let ivRaw = null;
+                for (const ik of IV_KEYS) {
+                    if (typeof item[ik] === "number") { ivRaw = item[ik]; break; }
+                }
+
+                if (ivRaw !== null) {
                     records.push({
-                        date,
-                        iv:    parseFloat(iv.toFixed(4)),
-                        open:  item.open  || undefined,
-                        high:  item.high  || undefined,
-                        low:   item.low   || undefined,
-                        close: item.close || undefined,
+                        date:  dateStr,
+                        iv:    parseFloat(ivRaw.toFixed(4)),
+                        open:  typeof item.open  === "number" ? item.open  : undefined,
+                        high:  typeof item.high  === "number" ? item.high  : undefined,
+                        low:   typeof item.low   === "number" ? item.low   : undefined,
+                        close: typeof item.close === "number" ? item.close : undefined,
                     });
                 }
-            });
-            return records;
+            }
+
+            if (records.length > 0) {
+                logger.info(
+                    `[IVSync] Sensibull format discovered: type=date-keyed-object | ` +
+                    `${records.length} records | ` +
+                    `range: ${records[0].date} → ${records[records.length - 1].date}`
+                );
+                return records;
+            }
+        }
+
+        // ── Type A & B: scan array values inside this container ───────────────
+        for (const [key, val] of Object.entries(container)) {
+            if (!Array.isArray(val) || val.length === 0) continue;
+
+            const first = val[0];
+            const records = [];
+
+            // ── Type A: array of 2-element tuples [[epoch|dateStr, iv], ...] ─
+            if (Array.isArray(first) && first.length >= 2) {
+                val.forEach((tuple) => {
+                    const date = _toDateStr(tuple[0]);
+                    const iv   = typeof tuple[1] === "number" ? tuple[1] : null;
+                    if (date && iv !== null) {
+                        records.push({ date, iv: parseFloat(iv.toFixed(4)) });
+                    }
+                });
+
+                if (records.length > 0) {
+                    logger.info(
+                        `[IVSync] Sensibull format discovered: key="${key}" | ` +
+                        `type=array-of-tuples | ${records.length} records`
+                    );
+                    return records;
+                }
+            }
+
+            // ── Type B: array of objects [{date, iv}, ...] ───────────────────
+            if (first && typeof first === "object" && !Array.isArray(first)) {
+                val.forEach((item) => {
+                    let dateRaw = null;
+                    for (const dk of DATE_KEYS) {
+                        if (item[dk] !== undefined) { dateRaw = item[dk]; break; }
+                    }
+                    let ivRaw = null;
+                    for (const ik of IV_KEYS) {
+                        if (typeof item[ik] === "number") { ivRaw = item[ik]; break; }
+                    }
+
+                    const date = _toDateStr(dateRaw);
+                    if (date && ivRaw !== null) {
+                        records.push({
+                            date,
+                            iv:    parseFloat(ivRaw.toFixed(4)),
+                            open:  typeof item.open  === "number" ? item.open  : undefined,
+                            high:  typeof item.high  === "number" ? item.high  : undefined,
+                            low:   typeof item.low   === "number" ? item.low   : undefined,
+                            close: typeof item.close === "number" ? item.close : undefined,
+                        });
+                    }
+                });
+
+                if (records.length > 0) {
+                    logger.info(
+                        `[IVSync] Sensibull format discovered: key="${key}" | ` +
+                        `type=array-of-objects | ${records.length} records`
+                    );
+                    return records;
+                }
+            }
         }
     }
 
-    // Shape 3: Root array → [[epoch, iv], ...]
-    if (Array.isArray(rawData) && Array.isArray(rawData[0])) {
-        logger.info("[IVSync] Sensibull format: root array of arrays");
-        rawData.forEach(([epochOrDate, iv]) => {
-            const date = _toDateStr(epochOrDate);
-            if (date && typeof iv === "number") {
-                records.push({ date, iv: parseFloat(iv.toFixed(4)) });
-            }
-        });
-        return records;
-    }
+    // ── All attempts failed — emit full structure for diagnosis ───────────────
+    const buildStructureSummary = (obj, depth = 0) => {
+        if (depth > 2 || !obj || typeof obj !== "object") return String(obj);
+        if (Array.isArray(obj)) {
+            return `Array(${obj.length})[${obj[0] ? typeof obj[0] : "empty"}]`;
+        }
+        return "{" + Object.entries(obj)
+            .map(([k, v]) => `${k}:${buildStructureSummary(v, depth + 1)}`)
+            .join(", ") + "}";
+    };
 
     logger.warn(
-        "[IVSync] Cannot parse Sensibull response. " +
-        "Keys: " + JSON.stringify(Object.keys(rawData || {}))
+        "[IVSync] ⚠️  Cannot parse Sensibull response after exhaustive search.\n" +
+        "         Full structure: " + buildStructureSummary(rawData) + "\n" +
+        "         → Kite INDIA VIX fallback will handle today's IV record."
     );
     return [];
 }
@@ -393,12 +530,19 @@ function getTodayIST() {
 /** Builds a Date object for a given date + IST hour/minute */
 function _istDate(dateStr, hour, minute) {
     // dateStr: "YYYY-MM-DD"
-    // We add IST offset (+5:30 = 330 min) to get the correct UTC time
-    const [y, m, d] = dateStr.split("-").map(Number);
-    // IST = UTC+5:30, so 09:00 IST = 03:30 UTC
-    const utcHour   = hour   - 5;
-    const utcMinute = minute - 30;
-    return new Date(Date.UTC(y, m - 1, d, utcHour, utcMinute < 0 ? utcMinute + 60 : utcMinute));
+    // IST = UTC+5:30 = +330 minutes total offset.
+    //
+    // WRONG approach: subtract hours and minutes independently.
+    //   e.g. 09:00 IST → hour-5=4, minute-30=-30 → clamped to +30 → 04:30 UTC = 10:00 IST ❌
+    //
+    // CORRECT approach: convert to total minutes, subtract 330, then re-derive h/m.
+    //   e.g. 09:00 IST → 9*60+0=540 → 540-330=210 → 3h 30m UTC → 03:30 UTC = 09:00 IST ✅
+    //        15:35 IST → 15*60+35=935 → 935-330=605 → 10h 5m UTC → 10:05 UTC = 15:35 IST ✅
+    const [y, mo, d] = dateStr.split("-").map(Number);
+    const totalMinutesUTC = hour * 60 + minute - 330; // 330 = IST offset
+    const utcH = Math.floor(totalMinutesUTC / 60);
+    const utcM = totalMinutesUTC % 60;
+    return new Date(Date.UTC(y, mo - 1, d, utcH, utcM));
 }
 
 /** Convert epoch (ms/s) or date string → "YYYY-MM-DD" */

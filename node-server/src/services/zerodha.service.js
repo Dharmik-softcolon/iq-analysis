@@ -760,11 +760,25 @@ class ZerodhaService {
             const Session = require("../models/Session");
             const today   = new Date().toISOString().split("T")[0];
 
-            const session = await Session.findOne({ date: today });
-            if (session && session.oiSnapshot && session.oiSnapshot.size > 0) {
-                session.oiSnapshot.forEach((val, key) => {
-                    this.prevOISnapshot.set(key, val);
-                });
+            const session = await Session.findOne({ date: today }).lean();
+
+            // session.oiSnapshot is stored as a Mongoose Mixed (plain object),
+            // NOT a JS Map — so we must use Object.entries(), not .size/.forEach()
+            const snap = session && session.oiSnapshot;
+            const snapKeys = snap && typeof snap === "object" ? Object.keys(snap) : [];
+
+            if (snapKeys.length > 0) {
+                for (const [key, val] of Object.entries(snap)) {
+                    // Validate shape before restoring to avoid corrupt data
+                    if (val && typeof val === "object") {
+                        this.prevOISnapshot.set(key, {
+                            ceOI:  val.ceOI  || 0,
+                            peOI:  val.peOI  || 0,
+                            ceLTP: val.ceLTP || 0,
+                            peLTP: val.peLTP || 0,
+                        });
+                    }
+                }
                 logger.info(
                     `[NativeEngine] OI snapshot hydrated from DB: ` +
                     `${this.prevOISnapshot.size} strikes restored`
