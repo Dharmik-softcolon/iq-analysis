@@ -111,8 +111,10 @@ class ZerodhaService {
                 atmPELTP,
                 expiryDate: nearestExpiry,
                 dte,
-                // NOTE: OI data fields below come from Sensibull/Opstra
-                // These are mocked — replace with real API calls
+                // NOTE: These OI fields are placeholder zeros.
+                // They are ALWAYS overridden by getCompleteMarketData()
+                // which fetches live data from NSE / Opstra via opstraService.
+                // Do NOT call getOptionChainData() directly for trading decisions.
                 totalCallPremChg: 0,
                 totalPutPremChg: 0,
                 totalBullishOI: 0,
@@ -169,38 +171,49 @@ class ZerodhaService {
         }
     }
 
-    // Add this method to existing ZerodhaService class
-
     async getCompleteMarketData(userId, symbol = "NIFTY") {
         const opstraService = require("./opstra.service");
 
-        // Step 1: Get price data from Zerodha
+        // Step 1: Get price data from Zerodha (LTP, ATM, expiry, VWAP)
         const priceData = await this.getOptionChainData(userId, symbol);
 
-        // Step 2: Get OI data from Opstra/NSE
-        const oiData = await opstraService.getCompleteOIData(
-            symbol,
-            priceData.expiryDate
-        );
+        // Step 2: Get live OI data from NSE / Opstra
+        let oiData;
+        try {
+            oiData = await opstraService.getCompleteOIData(symbol, priceData.expiryDate);
+        } catch (oiErr) {
+            logger.error(`OI data fetch failed: ${oiErr.message} — using empty OI`);
+            oiData = {
+                totalCallPremChg: 0, totalPutPremChg: 0,
+                totalBullishOI: 0,   totalBearishOI: 0,
+                sbOIChg: 0,          lbOIChg: 0,
+                scOIChg: 0,          luOIChg: 0,
+                pcrOI: 1.0,          itmPCR: 0,
+                ivAvg: 0,            ivp: 0,
+                dominantBuildup: "NONE",
+                source: "ERROR_FALLBACK",
+            };
+        }
 
-        // Step 3: Merge both datasets
+        // ── Data quality warning: if OI is all-zeros the IAE will not fire ──
+        if (
+            oiData.totalBullishOI === 0 &&
+            oiData.totalBearishOI === 0 &&
+            oiData.pcrOI === 1.0 &&
+            oiData.ivAvg === 0
+        ) {
+            logger.warn(
+                `OI data is all-zeros (source: ${oiData.source}). ` +
+                `IAE engines will score 0 — check NSE/Opstra connectivity.`
+            );
+        }
+
+        // Step 3: Merge — Zerodha price data takes priority over OI fields
         const merged = {
-            ...priceData,
-            ...oiData,
+            ...oiData,     // spread OI first
+            ...priceData,  // then price overrides shared keys
 
-            // Zerodha price data takes priority
-            niftyLTP: priceData.niftyLTP,
-            niftyOpen: priceData.niftyOpen,
-            niftyHigh: priceData.niftyHigh,
-            niftyLow: priceData.niftyLow,
-            niftyPrevClose: priceData.niftyPrevClose,
-            atmStrike: priceData.atmStrike,
-            atmCELTP: priceData.atmCELTP,
-            atmPELTP: priceData.atmPELTP,
-            expiryDate: priceData.expiryDate,
-            dte: priceData.dte,
-
-            // OI data from Opstra/NSE
+            // Explicit OI fields (from oiData, not overridden by priceData)
             totalCallPremChg: oiData.totalCallPremChg,
             totalPutPremChg: oiData.totalPutPremChg,
             totalBullishOI: oiData.totalBullishOI,
@@ -215,9 +228,6 @@ class ZerodhaService {
             ivp: oiData.ivp,
             dominantBuildup: oiData.dominantBuildup,
 
-            // VWAP will be added by VWAP calculator
-            niftyVWAP: priceData.niftyVWAP,
-
             timestamp: new Date().toISOString(),
             dataSources: {
                 price: "ZERODHA",
@@ -229,8 +239,9 @@ class ZerodhaService {
             `Market data merged | ` +
             `NIFTY: ${merged.niftyLTP} | ` +
             `PCR: ${merged.pcrOI} | ` +
+            `IV: ${merged.ivAvg}% | ` +
             `Buildup: ${merged.dominantBuildup} | ` +
-            `Sources: ${JSON.stringify(merged.dataSources)}`
+            `Sources: price=${merged.dataSources.price} oi=${merged.dataSources.oi}`
         );
 
         return merged;

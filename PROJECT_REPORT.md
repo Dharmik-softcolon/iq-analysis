@@ -319,21 +319,21 @@ Already mentioned in 5.6 above.
 
 ```
 PRIORITY 1 (Blocker — system cannot trade without these):
-  □ Implement GET /api/market/chain route in Node.js
-  □ Wire Opstra OI data into the chain response
-  □ Auto-restore Zerodha sessions from DB on server restart
+  [x] Implement GET /api/market/chain route in Node.js
+  [x] Wire Opstra OI data into the chain response
+  [x] Auto-restore Zerodha sessions from DB on server restart
 
 PRIORITY 2 (Risk controls):
-  □ Pass userId from Python engine to order routes
-  □ Verify JWT-based user auth on manual exit route
+  [x] Pass userId from Python engine to order routes
+  [x] Verify JWT-based user auth on manual exit route
 
 PRIORITY 3 (Stability):
-  □ Sync system:state WebSocket event names frontend ↔ server
-  □ Remove dead REDIS_URL config or add Redis to Docker Compose
+  [x] Sync system:state WebSocket event names frontend ↔ server
+  [x] Remove dead REDIS_URL config or add Redis to Docker Compose
 
 PRIORITY 4 (Maintainability):
-  □ Centralise LOT_SIZE as environment variable
-  □ Fix NIFTY quote symbol string constant
+  [x] Centralise LOT_SIZE as environment variable
+  [x] Fix NIFTY quote symbol string constant
 ```
 
 ---
