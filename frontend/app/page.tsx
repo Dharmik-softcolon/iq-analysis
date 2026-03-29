@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api";
 
@@ -11,6 +11,22 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
+    useEffect(() => {
+        // Auto-redirect if already logged in
+        const userStr = localStorage.getItem("whalehq_user");
+        if (userStr) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get("request_token");
+            
+            // If they got bounced here from Zerodha (misconfigured redirect URL), forward them correctly
+            if (token) {
+                router.push(`/settings/zerodha?request_token=${token}`);
+            } else {
+                router.push("/dashboard");
+            }
+        }
+    }, [router]);
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -20,10 +36,18 @@ export default function LoginPage() {
             const { token, user } = res.data;
             localStorage.setItem("whalehq_token", token);
             localStorage.setItem("whalehq_user", JSON.stringify(user));
+            const urlParams = new URLSearchParams(window.location.search);
+            const reqToken = urlParams.get("request_token");
+            const tokenParam = reqToken ? `?request_token=${reqToken}` : "";
+
             if (user.hasZerodha && !user.isZerodhaConnected) {
-                router.push("/settings/zerodha");
+                router.push(`/settings/zerodha${tokenParam}`);
             } else {
-                router.push("/dashboard");
+                if (reqToken) {
+                    router.push(`/settings/zerodha${tokenParam}`);
+                } else {
+                    router.push("/dashboard");
+                }
             }
         } catch (err: any) {
             setError(err.response?.data?.message || "Login failed. Check credentials.");
