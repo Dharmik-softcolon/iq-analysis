@@ -9,6 +9,7 @@ const cron = require("node-cron");
 const connectDB = require("./config/db");
 const { initIO } = require("./services/websocket.service");
 const { createLogger } = require("./utils/logger");
+const { fetchAndSync } = require("./services/ivSync.service");
 
 // Routes
 const authRoutes = require("./routes/auth");
@@ -138,6 +139,29 @@ cron.schedule(
     }
 );
 
+// ── Daily IV Sync Cron ────────────────────────────────
+// Runs at 17:00 IST every weekday (market close + 30 min)
+// Fetches latest IV from Sensibull and fills any missing dates in MongoDB
+cron.schedule(
+    "0 17 * * 1-5",
+    async () => {
+        const cronLogger = createLogger("IVSyncCron");
+        cronLogger.info("Daily IV sync cron fired (17:00 IST)");
+        try {
+            const result = await fetchAndSync();
+            cronLogger.info(
+                `IV sync done | Inserted: ${result.inserted} | ` +
+                `Total in DB: ${result.existing + result.inserted}`
+            );
+        } catch (err) {
+            cronLogger.error(`IV sync cron error: ${err.message}`);
+        }
+    },
+    {
+        timezone: "Asia/Kolkata",
+    }
+);
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
@@ -222,6 +246,27 @@ const start = async () => {
 
     // Restore Zerodha sessions after DB is connected
     await restoreZerodhaSessions();
+
+    // ── Startup IV Sync ───────────────────────────────
+    // Fills any missing IV history dates in MongoDB from Sensibull.
+    // Non-blocking: server starts immediately even if this fails.
+    fetchAndSync()
+        .then((r) => {
+            if (r.inserted > 0) {
+                logger.info(
+                    `Startup IV sync: ${r.inserted} new records inserted | ` +
+                    `Total IV history: ${r.existing + r.inserted} days`
+                );
+            } else {
+                logger.info(
+                    `Startup IV sync: MongoDB already up to date ` +
+                    `(${r.existing} days in history)`
+                );
+            }
+        })
+        .catch((err) =>
+            logger.warn(`Startup IV sync failed (non-critical): ${err.message}`)
+        );
 
     server.listen(PORT, () => {
         logger.info(`WhaleHQ Server running on port ${PORT}`);
