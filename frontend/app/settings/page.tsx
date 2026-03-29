@@ -28,6 +28,8 @@ export default function SettingsPage() {
             const parsed = JSON.parse(userData);
             setUser(parsed);
             setCapital(parsed.capital?.toString() || "");
+            setIsChoppy(parsed.isChoppyMonth || false);
+            setIsTrend(parsed.isTrendMonth || false);
         }
     }, []);
 
@@ -77,7 +79,7 @@ export default function SettingsPage() {
         setSaving(true);
         try {
             await systemAPI.updateSettings({ capital: num, isChoppyMonth: isChoppy, isTrendMonth: isTrend });
-            const updatedUser = { ...user, capital: num };
+            const updatedUser = { ...user, capital: num, isChoppyMonth: isChoppy, isTrendMonth: isTrend };
             localStorage.setItem("whalehq_user", JSON.stringify(updatedUser));
             setUser(updatedUser);
             setSaved(true);

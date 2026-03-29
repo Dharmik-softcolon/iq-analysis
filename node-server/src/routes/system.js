@@ -89,8 +89,8 @@ router.get("/config", async (req, res) => {
             success: true,
             capital: user.capital || 0,
             userId: user._id.toString(),
-            isChoppyMonth: global.monthSettings?.isChoppyMonth || false,
-            isTrendMonth: global.monthSettings?.isTrendMonth || false,
+            isChoppyMonth: user.isChoppyMonth || false,
+            isTrendMonth: user.isTrendMonth || false,
         });
     } catch (err) {
         logger.error(`Config fetch error: ${err.message}`);
@@ -360,9 +360,12 @@ router.put("/settings", authMiddleware, async (req, res) => {
             updateFields.capital = newCapital;
         }
 
+        if (isChoppyMonth !== undefined) updateFields.isChoppyMonth = isChoppyMonth;
+        if (isTrendMonth !== undefined) updateFields.isTrendMonth = isTrendMonth;
+
         await User.findByIdAndUpdate(req.user._id, { $set: updateFields });
 
-        // Store month settings globally for Python engine
+        // Update active session memory
         global.monthSettings = {
             isChoppyMonth: isChoppyMonth || false,
             isTrendMonth: isTrendMonth || false,

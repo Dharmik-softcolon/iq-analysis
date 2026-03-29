@@ -1,23 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { systemAPI } from "@/lib/api";
 
 interface Props {
     isAutoTrading: boolean;
     capital: number;
+    isChoppyMonth?: boolean;
+    isTrendMonth?: boolean;
     onUpdate: () => void;
 }
 
-export default function SystemControls({ isAutoTrading, capital, onUpdate }: Props) {
+export default function SystemControls({ isAutoTrading, capital, isChoppyMonth, isTrendMonth, onUpdate }: Props) {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [newCapital, setNewCapital] = useState(capital.toString());
-    const [isChoppy, setIsChoppy] = useState(false);
-    const [isTrend, setIsTrend] = useState(false);
+    const [isChoppy, setIsChoppy] = useState(isChoppyMonth || false);
+    const [isTrend, setIsTrend] = useState(isTrendMonth || false);
+
+    useEffect(() => {
+        setIsChoppy(isChoppyMonth || false);
+        setIsTrend(isTrendMonth || false);
+    }, [isChoppyMonth, isTrendMonth]);
 
     const toggleAutoTrading = async () => {
-        if (!isAutoTrading && !confirm("Enable auto trading? System will place real orders using Zerodha.")) return;
+        if (!isAutoTrading) {
+            if (capital <= 0) {
+                alert("Cannot enable LIVE trading. Your capital is 0. Please map your Zerodha margin in Settings -> General first.");
+                return;
+            }
+            if (!confirm("Enable auto trading? System will place real orders using your Zerodha margin.")) return;
+        }
         setLoading(true);
         try { await systemAPI.toggleAutoTrading(); onUpdate(); }
         catch { alert("Failed to toggle auto trading"); }
@@ -27,7 +39,7 @@ export default function SystemControls({ isAutoTrading, capital, onUpdate }: Pro
     const saveSettings = async () => {
         setSaving(true);
         try {
-            await systemAPI.updateSettings({ capital: Number(newCapital), isChoppyMonth: isChoppy, isTrendMonth: isTrend });
+            await systemAPI.updateSettings({ isChoppyMonth: isChoppy, isTrendMonth: isTrend });
             onUpdate();
         } catch { alert("Failed to save settings"); }
         finally { setSaving(false); }
@@ -77,19 +89,22 @@ export default function SystemControls({ isAutoTrading, capital, onUpdate }: Pro
                 </button>
             </div>
 
-            {/* Capital */}
+            {/* Capital (Read Only) */}
             <div>
                 <label className="label block mb-2">Trading Capital (₹)</label>
-                <input
-                    type="number"
-                    value={newCapital}
-                    onChange={(e) => setNewCapital(e.target.value)}
-                    className="input"
-                    placeholder="Auto-synced from Zerodha"
-                    min={0}
-                />
-                <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
-                    Must be ≤ your Zerodha available margin. Change in Settings → General.
+                <div 
+                    className="flex justify-between items-center p-3"
+                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-base)", borderRadius: "2px" }}
+                >
+                    <div className="font-mono font-bold text-white tracking-wider">
+                        ₹ {capital > 0 ? Math.floor(capital).toLocaleString("en-IN") : "0"}
+                    </div>
+                    <a href="/settings" className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition">
+                        Manage Limit →
+                    </a>
+                </div>
+                <p className="mt-2 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    Capital limits are securely synced with your Zerodha available margin.
                 </p>
             </div>
 

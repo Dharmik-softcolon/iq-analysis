@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { systemAPI, tradeAPI } from "@/lib/api";
+import { systemAPI, tradeAPI, authAPI } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import { SystemState, Trade, TradeStats } from "@/lib/types";
 
@@ -73,16 +73,21 @@ export default function DashboardPage() {
 
     const loadData = useCallback(async () => {
         try {
-            const [stateRes, activeRes, historyRes, statsRes] = await Promise.all([
+            const [stateRes, activeRes, historyRes, statsRes, userRes] = await Promise.all([
                 systemAPI.getState(),
                 tradeAPI.getActive(),
                 tradeAPI.getHistory({ limit: 50 }),
                 tradeAPI.getStats(),
+                authAPI.getMe(),
             ]);
             if (stateRes.data.state) setState(stateRes.data.state);
             setActiveTrades(activeRes.data.trades || []);
             setTradeHistory(historyRes.data.trades || []);
             setStats(statsRes.data.stats || null);
+            if (userRes.data.user) {
+                setUser(userRes.data.user);
+                localStorage.setItem("whalehq_user", JSON.stringify(userRes.data.user));
+            }
         } catch (err) {
             console.error("Data load error:", err);
         }
@@ -222,7 +227,7 @@ export default function DashboardPage() {
                         />
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
                             <IAEScoreboard score={state.iaeScore} breakdown={state.iaeBreakdown} />
-                            <SystemControls isAutoTrading={user?.isAutoTrading || false} capital={user?.capital || 0} onUpdate={loadData} />
+                            <SystemControls isAutoTrading={user?.isAutoTrading || false} capital={user?.capital || 0} isChoppyMonth={user?.isChoppyMonth} isTrendMonth={user?.isTrendMonth} onUpdate={loadData} />
                         </div>
                     </div>
                 )}

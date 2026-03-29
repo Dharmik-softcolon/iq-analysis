@@ -18,6 +18,8 @@ const UserSchema = new mongoose.Schema(
         capital: { type: Number, default: 0 },
         isActive: { type: Boolean, default: true },
         isAutoTrading: { type: Boolean, default: false },
+        isChoppyMonth: { type: Boolean, default: false },
+        isTrendMonth: { type: Boolean, default: false },
     },
     { timestamps: true }
 );
