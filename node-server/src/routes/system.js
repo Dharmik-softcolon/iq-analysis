@@ -103,7 +103,7 @@ router.get("/market/chain", async (req, res) => {
             }
         }
 
-        // Use merged data (Zerodha + Opstra/NSE)
+        // Use native engine: Zerodha Kite OI + Black-Scholes IV + MongoDB IVP
         const marketData = await zerodhaService.getCompleteMarketData(
             user._id, "NIFTY"
         );

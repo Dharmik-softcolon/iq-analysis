@@ -16,6 +16,25 @@ const SessionSchema = new mongoose.Schema(
         niftyOpen: { type: Number },
         niftyClose: { type: Number },
         lastUpdated: { type: Date, default: Date.now },
+
+        // ── OI Snapshot: persists previous-tick OI data across server restarts ──
+        // Map of strikePrice (string key) → previous tick OI/LTP values.
+        // Re-hydrated into in-memory OI store on zerodha.service startup.
+        // On a cold restart the first tick shows zero OI change — this is correct.
+        oiSnapshot: {
+            type: Map,
+            of: new mongoose.Schema(
+                {
+                    ceOI:  { type: Number, default: 0 },
+                    peOI:  { type: Number, default: 0 },
+                    ceLTP: { type: Number, default: 0 },
+                    peLTP: { type: Number, default: 0 },
+                },
+                { _id: false }
+            ),
+            default: {},
+        },
+        oiSnapshotUpdatedAt: { type: Date },
     },
     { timestamps: true }
 );
