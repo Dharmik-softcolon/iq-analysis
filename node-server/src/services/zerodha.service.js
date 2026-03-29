@@ -302,45 +302,78 @@ class ZerodhaService {
         // Find the nearest weekly/monthly expiry
         const today    = new Date();
         today.setHours(0, 0, 0, 0);
-        const expiries = [...new Set(optionInstruments.map((i) => i.expiry))]
+
+        // Helper to safely get YYYY-MM-DD from Kite's expiry (which can be a Date object)
+        const getExpiryStr = (val) => {
+            if (!val) return null;
+            if (val instanceof Date) {
+                // Kite sets expiry dates to midnight UTC.
+                // toISOString safely returns the UTC "YYYY-MM-DD" exactly matching what Kite sent.
+                return val.toISOString().split("T")[0];
+            }
+            if (typeof val === 'string') return val.split("T")[0];
+            return null;
+        };
+
+        const expiriesSet = new Set();
+        optionInstruments.forEach((i) => {
+            const dStr = getExpiryStr(i.expiry);
+            if (dStr) expiriesSet.add(dStr);
+        });
+
+        const expiries = Array.from(expiriesSet)
             .map((e) => new Date(e))
             .filter((d) => d >= today)
             .sort((a, b) => a - b);
 
         if (expiries.length === 0) throw new Error("No valid expiries found for " + symbol);
 
-        const nearestExpiry    = expiries[0];
-        const expiryStr        = nearestExpiry.toISOString().split("T")[0]; // "YYYY-MM-DD"
+        // Iterate through expiries to find the closest one that actually has strikes around the ATM
+        for (let i = 0; i < expiries.length; i++) {
+            const nearestExpiry = expiries[i];
+            const expiryStr = nearestExpiry.toISOString().split("T")[0];
 
-        // Cache: store all option instruments for this expiry
-        this._instrumentsCache = {
-            allInstruments: optionInstruments,
-            expiry: expiryStr,
-        };
-        this._instrumentsCacheExpiry = now + INSTRUMENTS_TTL;
+            const strikeMap = this._buildStrikeMap(
+                optionInstruments, expiryStr, atmStrike, strikeInterval, symbol, false
+            );
+            
+            if (Object.keys(strikeMap).length > 0) {
+                // Cache: store all option instruments for this expiry
+                this._instrumentsCache = {
+                    allInstruments: optionInstruments,
+                    expiry: expiryStr,
+                };
+                this._instrumentsCacheExpiry = now + INSTRUMENTS_TTL;
 
-        logger.info(
-            `[NativeEngine] Instruments cached | expiry=${expiryStr} | ` +
-            `${optionInstruments.length} option instruments`
-        );
+                logger.info(
+                    `[NativeEngine] Instruments cached | expiry=${expiryStr} | ` +
+                    `${Object.keys(strikeMap).length} strikes mapped`
+                );
 
-        return this._buildStrikeMap(
-            optionInstruments, expiryStr, atmStrike, strikeInterval, symbol
-        );
+                return { expiry: expiryStr, atmStrike, strikeMap };
+            }
+        }
+
+        throw new Error(`No expiries found with option instruments for ATM=${atmStrike}`);
     }
 
-    /**
-     * Build a strikeMap for ATM ± STRIKES_EACH_SIDE from the cached instrument list.
-     * Returns { expiry, atmStrike, strikeMap }
-     * strikeMap: { [strike]: { ceSymbol, peSymbol } }
-     */
-    _buildStrikeMap(instruments, expiry, atmStrike, strikeInterval, symbol) {
+    _buildStrikeMap(instruments, expiry, atmStrike, strikeInterval, symbol, throwOnEmpty = true) {
         const strikeMap = {};
+
+        const getExpiryStr = (val) => {
+            if (!val) return null;
+            if (val instanceof Date) {
+                return val.toISOString().split("T")[0];
+            }
+            if (typeof val === 'string') return val.split("T")[0];
+            return null;
+        };
 
         // Build lookup: strike+type → tradingsymbol
         const lookup = {};
         instruments.forEach((i) => {
-            if (i.expiry !== expiry) return;
+            const itemExpiryStr = getExpiryStr(i.expiry);
+            if (itemExpiryStr !== expiry) return;
             const key = `${i.strike}_${i.instrument_type}`;
             lookup[key] = `NFO:${i.tradingsymbol}`;
         });
@@ -359,13 +392,13 @@ class ZerodhaService {
             }
         }
 
-        if (Object.keys(strikeMap).length === 0) {
+        if (Object.keys(strikeMap).length === 0 && throwOnEmpty) {
             throw new Error(
                 `No option instruments found for ATM=${atmStrike} expiry=${expiry}`
             );
         }
 
-        return { expiry, atmStrike, strikeMap };
+        return typeof throwOnEmpty !== 'undefined' && !throwOnEmpty ? strikeMap : { expiry, atmStrike, strikeMap };
     }
 
 

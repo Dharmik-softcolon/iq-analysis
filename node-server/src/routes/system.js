@@ -73,7 +73,7 @@ router.get("/state", authMiddleware, async (req, res) => {
 
 // GET /api/market/chain
 
-router.get("/market/chain", async (req, res) => {
+router.get("/chain", async (req, res) => {
     try {
         const internalKey = req.headers["x-internal-key"];
         if (internalKey !== "whalehq-python-engine") {
@@ -116,7 +116,7 @@ router.get("/market/chain", async (req, res) => {
 });
 
 // GET /api/market/price
-router.get("/market/price", async (req, res) => {
+router.get("/price", async (req, res) => {
     try {
         const state = global.latestSystemState || {};
         res.json({
@@ -249,7 +249,7 @@ router.put("/settings", authMiddleware, async (req, res) => {
 
 // GET /api/market/candles
 // Returns today's 1-min candles for VWAP calculation
-router.get("/market/candles", async (req, res) => {
+router.get("/candles", async (req, res) => {
     try {
         const internalKey = req.headers["x-internal-key"];
         if (internalKey !== "whalehq-python-engine") {
