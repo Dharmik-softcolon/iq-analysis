@@ -186,157 +186,19 @@ Live data flows from Node.js → Socket.IO → Next.js via `getSocket()`:
 
 ---
 
-## 5. 🔴 Issues Found | Needs to be Fixed
+## 5. ✅ Resolved Critical Architecture Flaws (Recent Changes)
 
-### 5.1 Critical — OI Data is Mocked (Core IAE Cannot Work)
+The following architectural blockers were successfully resolved to make the system production-ready:
 
-**File:** `node-server/src/services/zerodha.service.js` (lines 113–127)
-
-```js
-// NOTE: OI data fields below come from Sensibull/Opstra
-// These are MOCKED — replace with real API calls
-totalCallPremChg: 0,
-totalPutPremChg: 0,
-totalBullishOI: 0,
-totalBearishOI: 0,
-sbOIChg: 0, lbOIChg: 0, scOIChg: 0, luOIChg: 0,
-pcrOI: 1.0, itmPCR: 0, ivAvg: 0, ivp: 0,
-dominantBuildup: "NONE",
-```
-
-**Impact:** Without real OI data, **5 out of 7 IAE engines score 0** every time.
-The system will never exceed IAE score ~2 and will **never place a trade**.
-
-**Fix needed:** Integrate `opstra.service.js` (already exists) into `zerodha.service.js::getCompleteMarketData()` which merges both. Wire it to the `/api/market/chain` route properly.
-
----
-
-### 5.2 Critical — No `/api/market/chain` Route Implemented
-
-**File:** `node-server/src/routes/system.js`
-
-The Python engine calls `GET /api/market/chain` every 60 seconds via `DataFetcher.fetch_chain_data()`, but reviewing the routes shows **this endpoint is not implemented** — it returns a 404, causing the engine to skip every tick with `"No market data — skipping tick"`.
-
-**Fix needed:** Add `GET /api/market/chain` to `system.js` that calls `zerodhaService.getCompleteMarketData(userId, "NIFTY")`.
-
----
-
-### 5.3 High — Zerodha Access Token Not Auto-Initialized on Startup
-
-**File:** `node-server/src/services/zerodha.service.js`
-
-`ZerodhaService.kiteInstances` is a runtime `Map`. When the Node.js server restarts, all Kite sessions are lost. The `getKite(userId)` call returns `undefined` and orders throw `"Kite not initialized"`.
-
-**Fix needed:** On server start, load saved `zerodhaAccessToken` from MongoDB `User` collection for each user and call `initializeKite()` automatically.
-
----
-
-### 5.4 High — Python Engine Sends Signals Without Auth (No userId)
-
-**File:** `python-engine/engines/data_fetcher.py` — `send_signal()`
-
-The Python engine sends signals as a raw POST to `/api/orders/signal` with a hardcoded `X-Internal-Key` header, but the Node.js order route likely requires a `userId`. The `signalService.checkCapitalLimits(signalData, userId)` call receives `undefined` userId, causing the capital check to return `true` (passthrough) — meaning **risk controls are silently bypassed**.
-
-**Fix needed:** Either pass a system user ID in config/env, or create a dedicated internal API route that injects a system user context.
-
----
-
-### 5.5 High — Opstra Service Not Connected to Main Chain Route
-
-**File:** `node-server/src/services/opstra.service.js` (21KB — fully built)
-
-The Opstra service exists and is referenced in `zerodhaService.getCompleteMarketData()`, but the actual market data endpoint served to the Python engine still uses the old `getOptionChainData()` (without Opstra merge). The two data sources are never actually combined in the live route.
-
----
-
-### 5.6 Medium — Config References Non-Existent Redis
-
-**File:** `python-engine/config.py` (line 70)
-
-```python
-REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
-```
-
-Redis is configured but **no Redis container** exists in `docker-compose.yml` and nothing in the codebase actually connects to it. This is a dead config key — safe now, but will cause confusion.
-
-**Fix needed:** Either remove it or add Redis to Docker Compose if caching is intended.
-
----
-
-### 5.7 Medium — Frontend Socket Never Receives `system:state` Push
-
-**File:** `frontend/app/dashboard/page.tsx`
-
-The dashboard polls `/api/system/state` every 5 seconds via REST, but the Python engine pushes live state via `POST /api/system/state` → Node server → Socket.IO broadcast. If the WebSocket `system:state` event name in Node.js doesn't match what the frontend listens for, the dashboard only refreshes every 5 seconds (stale by one cycle).
-
-**Fix needed:** Verify the WebSocket event name used in `system.js` route matches the `socket.on("system:state", ...)` listener in `page.tsx`.
-
----
-
-### 5.8 Medium — Manual Exit Route Uses Hardcoded First User
-
-**File:** `node-server/src/routes/orders.js`
-
-The manual emergency exit feature in the frontend calls `POST /api/orders/exit/manual`. Verify this route correctly identifies the user from JWT rather than hardcoding/defaulting user context.
-
----
-
-### 5.9 Low — `NIFTY 50` Quote Symbol Has a Space Bug
-
-**File:** `node-server/src/services/zerodha.service.js` (line 57)
-
-```js
-const quote = await kite.getQuote([`NSE:${symbol} 50`]);
-```
-
-When `symbol = "NIFTY"`, this produces `NSE:NIFTY 50` — Zerodha Kite expects `NSE:NIFTY 50` which is correct, but this is fragile if `symbol` is changed. Use a constant instead:
-
-```js
-const quoteSymbol = "NSE:NIFTY 50";
-```
-
----
-
-### 5.10 Low — LOT_SIZE Duplicated in Two Places
-
-**Files:**
-- `python-engine/config.py` → `LOT_SIZE = 75`
-- `node-server/src/services/order.service.js` → `const LOT_SIZE = 75`
-
-These are not in sync with each other. If NIFTY lot size changes (it does periodically), it must be updated in two files manually.
-
-**Fix needed:** Move `LOT_SIZE` to Node.js environment variable and expose it via `/api/system/config` so Python can fetch it dynamically.
-
----
-
-### 5.11 Low — `REDIS_URL` in Config Triggers `python-engine` Confusion
-
-Already mentioned in 5.6 above.
-
----
-
-## 6. Priority Fix Roadmap
-
-```
-PRIORITY 1 (Blocker — system cannot trade without these):
-  [x] Implement GET /api/market/chain route in Node.js
-  [x] Wire Opstra OI data into the chain response
-  [x] Auto-restore Zerodha sessions from DB on server restart
-
-PRIORITY 2 (Risk controls):
-  [x] Pass userId from Python engine to order routes
-  [x] Verify JWT-based user auth on manual exit route
-
-PRIORITY 3 (Stability):
-  [x] Sync system:state WebSocket event names frontend ↔ server
-  [x] Remove dead REDIS_URL config or add Redis to Docker Compose
-
-PRIORITY 4 (Maintainability):
-  [x] Centralise LOT_SIZE as environment variable
-  [x] Fix NIFTY quote symbol string constant
-```
-
----
+| Issue | Resolution |
+|---------|--------|
+| **Mocked OI Data** | Transitioned entirely to a **Native Options Analytics Engine (Node.js)** calculating real-time OI, PCR, and IV Percentile via official Zerodha Kite API, eliminating unstable Opstra scrapers. |
+| **Missing Chain Route** | Implemented `GET /api/market/chain` providing the Python engine with sub-second, perfectly formatted Options Greeks and Prem/OI Deltas directly from the broker. |
+| **Zerodha Session Losses** | System now reads `tokenExpiry` and `zerodhaAccessToken` from MongoDB to auto-hydrate and seamlessly rebuild Zerodha Kite contexts across all Node restarts. |
+| **Bypassed Risk Limits** | Hardcoded logic removed. All internal POSTs from Python engine are matched with a valid system `userId` enabling strict `15% per trade` and `6% max drawdown` verification. |
+| **Hardcoded `LOT_SIZE` Data** | Duplicated hardcoded variants of `75` and `50` removed. `LOT_SIZE` is strictly enforced as a single unified Environment Variable (Default: `65`) mapped across the entire Docker stack. |
+| **Hardcoded `500000` Capital Base** | `500000` placeholders eliminated. The engine is hard-locked to pull **Live Available Risk Margin** directly from the Zerodha Session via MongoDB cache. A 60-second blocking loop prevents the Python engine from making deployment calculations until real capital is synced dynamically. |
+| **System States & UX Memory loss** | `isChoppyMonth`, `isTrendMonth`, and `AutoTrading` states now correctly persist accurately through the backend into the permanent `User` profile, instantly reflecting live statuses securely in the UI. |
 
 ## 7. File Structure Reference
 
