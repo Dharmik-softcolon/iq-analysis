@@ -22,7 +22,7 @@ logger = setup_logger("SessionManager")
 class SessionState:
     """Complete session state"""
     date: str = ""
-    capital: float = 500000.0
+    capital: float = 0.0   # Fetched from Node.js /api/system/state at startup
 
     # Session metrics
     trades_today: int = 0
@@ -70,7 +70,8 @@ class SessionManager:
 
         # Initialize with today's date
         self.state.date = now_ist().strftime("%Y-%m-%d")
-        self.state.capital = config.CAPITAL
+        # Capital is loaded from Node.js DB on first state sync — NOT hardcoded
+        self.state.capital = config.CAPITAL if config.CAPITAL > 0 else 0.0
 
     # ─────────────────────────────────────────────
     # SESSION RESET

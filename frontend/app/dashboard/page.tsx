@@ -27,7 +27,7 @@ const defaultState: SystemState = {
     activePositions: 0,
     tradesToday: 0,
     dailyPnL: 0,
-    capital: 500000,
+    capital: 0,
     niftyLTP: 0,
     pcr: 1.0,
     dte: 5,
@@ -222,7 +222,7 @@ export default function DashboardPage() {
                         />
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
                             <IAEScoreboard score={state.iaeScore} breakdown={state.iaeBreakdown} />
-                            <SystemControls isAutoTrading={user?.isAutoTrading || false} capital={user?.capital || 500000} onUpdate={loadData} />
+                            <SystemControls isAutoTrading={user?.isAutoTrading || false} capital={user?.capital || 0} onUpdate={loadData} />
                         </div>
                     </div>
                 )}

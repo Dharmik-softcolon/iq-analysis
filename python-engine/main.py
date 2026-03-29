@@ -77,9 +77,40 @@ class WhaleHQEngine:
         logger.info("WHALEHQ v6.0 — ENGINE STARTED")
         logger.info("=" * 60)
 
+        # ── Step 0: Load real capital from Node.js DB ─────────────────
+        # Capital is ALWAYS sourced from Zerodha available margin via DB.
+        # Never use a hardcoded value — this call sets the ground truth.
+        logger.info("[Startup] Fetching real trading capital from Node.js...")
+        startup_config = self.data_fetcher.fetch_capital()
+        real_capital = startup_config["capital"]
+
+        if real_capital <= 0:
+            logger.error(
+                "[Startup] ⛔ Trading capital is 0 or not set in DB. "
+                "Go to Settings → General in the WhaleHQ dashboard and sync "
+                "your Zerodha balance before starting the engine."
+            )
+            # Keep retrying every 60s until capital is configured
+            while real_capital <= 0:
+                logger.info("[Startup] Waiting 60s for capital to be configured...")
+                time.sleep(60)
+                startup_config = self.data_fetcher.fetch_capital(retries=1)
+                real_capital = startup_config["capital"]
+
+        # Inject real capital into session manager
+        self.session_manager.state.capital = real_capital
+        self.session_manager.state.is_choppy_month = startup_config["isChoppyMonth"]
+        self.session_manager.state.is_trend_month  = startup_config["isTrendMonth"]
+
+        logger.info(
+            f"[Startup] ✅ Capital set: ₹{real_capital:,.0f} | "
+            f"Choppy={startup_config['isChoppyMonth']} | "
+            f"Trend={startup_config['isTrendMonth']}"
+        )
+
         session_info = self.expiry_manager.get_session_info()
         self.telegram.send_system_startup(
-            capital=config.CAPITAL,
+            capital=real_capital,
             expiry=session_info["expiry_formatted"],
             dte=session_info["dte"]
         )
@@ -862,7 +893,8 @@ class WhaleHQEngine:
 
         self.active_positions = []
 
-        # Update EOD capital
+        # Update EOD capital (capture start capital before update for logging)
+        capital_start = self.session_manager.state.capital
         self.session_manager.update_capital_end_of_day()
 
         self.telegram.send_daily_summary(
@@ -871,7 +903,7 @@ class WhaleHQEngine:
             wins=self.session_manager.state.consecutive_wins,
             losses=self.session_manager.state.consecutive_sl_hits,
             total_pnl=self.session_manager.state.daily_pnl,
-            capital_start=config.CAPITAL,
+            capital_start=capital_start,
             capital_end=self.session_manager.state.capital,
             market_state=self.market_state.value,
             iae_score=(

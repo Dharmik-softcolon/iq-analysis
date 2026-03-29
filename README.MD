@@ -38,7 +38,7 @@ cd ..
 Step 2 — Configure Environment
 bash
 # python-engine/.env
-CAPITAL=500000
+CAPITAL=0
 NODE_SERVER_URL=http://localhost:4000
 TELEGRAM_BOT_TOKEN=your_token
 TELEGRAM_CHAT_ID=your_chat_id

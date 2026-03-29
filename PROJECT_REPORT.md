@@ -405,7 +405,7 @@ whalehq_project/
 
 ### Python Engine (`.env`)
 ```
-CAPITAL=500000
+CAPITAL=0
 NODE_SERVER_URL=http://localhost:4000
 MONGO_URI=mongodb://localhost:27017/whalehq
 TELEGRAM_BOT_TOKEN=your_bot_token

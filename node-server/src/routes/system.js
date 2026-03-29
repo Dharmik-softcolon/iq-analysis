@@ -71,6 +71,33 @@ router.get("/state", authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/system/config
+// Called by Python engine on startup to fetch real capital from DB
+router.get("/config", async (req, res) => {
+    try {
+        const internalKey = req.headers["x-internal-key"];
+        if (internalKey !== "whalehq-python-engine") {
+            return res.status(401).json({ success: false });
+        }
+
+        const user = await User.findOne({ isActive: true }).sort({ updatedAt: -1 });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "No active user found" });
+        }
+
+        res.json({
+            success: true,
+            capital: user.capital || 0,
+            userId: user._id.toString(),
+            isChoppyMonth: global.monthSettings?.isChoppyMonth || false,
+            isTrendMonth: global.monthSettings?.isTrendMonth || false,
+        });
+    } catch (err) {
+        logger.error(`Config fetch error: ${err.message}`);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // GET /api/market/chain
 
 router.get("/chain", async (req, res) => {
@@ -223,17 +250,117 @@ router.post("/toggle-auto", authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/system/capital-sync
+// Returns real available trading margin from Zerodha and syncs to DB
+router.get("/capital-sync", authMiddleware, async (req, res) => {
+    try {
+        let user = await User.findOne({ isAutoTrading: true });
+        if (!user) user = await User.findById(req.user._id);
+
+        const userId = user._id;
+        const isTokenValid = user.tokenExpiry && new Date(user.tokenExpiry) > new Date();
+
+        if (!zerodhaService.getKite(userId)) {
+            if (user.zerodhaApiKey && user.zerodhaAccessToken && isTokenValid) {
+                await zerodhaService.initializeKite(
+                    userId,
+                    user.zerodhaApiKey,
+                    user.zerodhaAccessToken
+                );
+            } else {
+                return res.status(401).json({
+                    success: false,
+                    message: "Zerodha token expired — please re-authenticate",
+                });
+            }
+        }
+
+        const margins = await zerodhaService.getMargins(userId);
+        if (!margins) {
+            return res.status(400).json({ success: false, message: "Could not fetch margins" });
+        }
+
+        const availableMargin = margins.available || 0;
+
+        // Auto-sync: trigger if capital is unset (0) or still has the old 500000 placeholder
+        // Both are treated as "not yet configured" and should be replaced by real Zerodha margin
+        const currentCapital = user.capital || 0;
+        let synced = false;
+
+        if (currentCapital === 0 || currentCapital === 500000 || currentCapital > availableMargin) {
+            await User.findByIdAndUpdate(userId, {
+                $set: { capital: availableMargin },
+            });
+            synced = true;
+            logger.info(
+                `Capital auto-synced for ${user.email}: ` +
+                `${currentCapital} → ₹${availableMargin} (real Zerodha margin)`
+            );
+        }
+
+        res.json({
+            success: true,
+            availableMargin,
+            currentCapital: synced ? availableMargin : currentCapital,
+            synced,
+            timestamp: margins.timestamp,
+        });
+    } catch (err) {
+        logger.error(`Capital sync error: ${err.message}`);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // PUT /api/system/settings
 router.put("/settings", authMiddleware, async (req, res) => {
     try {
         const { capital, isChoppyMonth, isTrendMonth } = req.body;
 
         const updateFields = {};
-        if (capital) updateFields.capital = capital;
 
-        await User.findByIdAndUpdate(req.user._id, {
-            $set: updateFields,
-        });
+        if (capital !== undefined) {
+            const newCapital = Number(capital);
+
+            // ── Validate capital ≤ real Zerodha available margin ─────────────
+            let user = await User.findById(req.user._id);
+            const isTokenValid = user.tokenExpiry && new Date(user.tokenExpiry) > new Date();
+
+            if (zerodhaService.getKite(user._id) || (user.zerodhaApiKey && isTokenValid)) {
+                try {
+                    if (!zerodhaService.getKite(user._id)) {
+                        await zerodhaService.initializeKite(
+                            user._id,
+                            user.zerodhaApiKey,
+                            user.zerodhaAccessToken
+                        );
+                    }
+
+                    const margins = await zerodhaService.getMargins(user._id);
+                    const availableMargin = margins?.available || 0;
+
+                    if (availableMargin > 0 && newCapital > availableMargin) {
+                        return res.status(400).json({
+                            success: false,
+                            message: `Trading capital (₹${newCapital.toLocaleString("en-IN")}) cannot exceed your real Zerodha available margin (₹${availableMargin.toLocaleString("en-IN")}). Please deposit more funds or lower your capital.`,
+                            availableMargin,
+                        });
+                    }
+
+                    logger.info(
+                        `Capital updated for ${user.email}: ` +
+                        `₹${user.capital} → ₹${newCapital} ` +
+                        `(Zerodha margin: ₹${availableMargin})`
+                    );
+                } catch (marginErr) {
+                    // If margin fetch fails, allow the update (don't block trading)
+                    logger.warn(`Margin validation skipped (fetch failed): ${marginErr.message}`);
+                }
+            }
+
+            updateFields.capital = newCapital;
+        }
+
+        await User.findByIdAndUpdate(req.user._id, { $set: updateFields });
 
         // Store month settings globally for Python engine
         global.monthSettings = {

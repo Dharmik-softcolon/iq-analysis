@@ -49,6 +49,8 @@ export const systemAPI = {
     toggleAutoTrading: () => api.post("/system/toggle-auto"),
     updateSettings: (settings: Record<string, unknown>) =>
         api.put("/system/settings", settings),
+    // Returns real Zerodha available margin and auto-syncs capital if needed
+    capitalSync: () => api.get("/system/capital-sync"),
 };
 
 // Trade APIs

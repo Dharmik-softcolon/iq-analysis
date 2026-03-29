@@ -15,7 +15,7 @@ const UserSchema = new mongoose.Schema(
         tokenExpiry: { type: Date },
 
         // System Settings
-        capital: { type: Number, default: 500000 },
+        capital: { type: Number, default: 0 },
         isActive: { type: Boolean, default: true },
         isAutoTrading: { type: Boolean, default: false },
     },

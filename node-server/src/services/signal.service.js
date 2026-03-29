@@ -199,7 +199,16 @@ class SignalService {
                 };
             }
 
-            const capital = user.capital || 500000;
+            const capital = user.capital || 0;
+
+            // Block trades if capital has not been synced from Zerodha yet
+            if (capital === 0) {
+                return {
+                    allowed: false,
+                    reason: "Trading capital is not set. Go to Settings → General and sync your Zerodha balance.",
+                };
+            }
+
             const deployed = signalData.capitalDeployed || 0;
             const maxDeployed = capital * 0.15; // 15% max
 

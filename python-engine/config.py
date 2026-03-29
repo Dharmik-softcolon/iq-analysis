@@ -7,8 +7,8 @@ load_dotenv()
 
 @dataclass
 class WhaleHQConfig:
-    # Capital
-    CAPITAL: float = float(os.getenv("CAPITAL", 500000))
+    # Capital — sourced from Zerodha real margin via Node.js DB (set to 0 = use DB value)
+    CAPITAL: float = float(os.getenv("CAPITAL", 0))
 
     # Risk Parameters
     RISK_PCT: float = 0.025          # 2.5% risk per trade

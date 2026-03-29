@@ -43,7 +43,7 @@ services:
     environment:
       NODE_SERVER_URL: http://node-server:4000
       MONGO_URI: mongodb://mongodb:27017/whalehq
-      CAPITAL: 500000
+      CAPITAL: 0  # Sourced from real Zerodha margin via DB — do not hardcode
       LOT_SIZE: 65
     volumes:
       - ./python-engine/logs:/app/logs

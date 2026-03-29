@@ -85,8 +85,12 @@ export default function SystemControls({ isAutoTrading, capital, onUpdate }: Pro
                     value={newCapital}
                     onChange={(e) => setNewCapital(e.target.value)}
                     className="input"
-                    placeholder="500000"
+                    placeholder="Auto-synced from Zerodha"
+                    min={0}
                 />
+                <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    Must be ≤ your Zerodha available margin. Change in Settings → General.
+                </p>
             </div>
 
             {/* Month type */}

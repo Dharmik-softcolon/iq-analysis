@@ -105,6 +105,49 @@ class DataFetcher:
         except Exception as e:
             logger.error(f"State update failed: {e}")
 
+    def fetch_capital(self, retries: int = 3) -> dict:
+        """
+        Fetch real trading capital + month settings from Node.js DB.
+        Called once at engine startup — returns the capital the user
+        has configured (synced from their real Zerodha available margin).
+
+        Returns:
+            dict with keys: capital (float), isChoppyMonth (bool), isTrendMonth (bool)
+            Returns capital=0 on failure — caller should gate on this.
+        """
+        for attempt in range(1, retries + 1):
+            try:
+                resp = self.session.get(
+                    f"{self.base_url}/api/system/config",
+                    timeout=5
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                capital = float(data.get("capital", 0))
+                logger.info(
+                    f"[Startup] Capital loaded from DB: ₹{capital:,.0f} "
+                    f"| choppy={data.get('isChoppyMonth')} "
+                    f"| trend={data.get('isTrendMonth')}"
+                )
+                return {
+                    "capital": capital,
+                    "isChoppyMonth": data.get("isChoppyMonth", False),
+                    "isTrendMonth": data.get("isTrendMonth", False),
+                }
+
+            except Exception as e:
+                logger.warning(
+                    f"Capital fetch attempt {attempt}/{retries} failed: {e}"
+                )
+                if attempt < retries:
+                    time.sleep(3 * attempt)
+
+        logger.error("Could not fetch capital from Node.js after all retries. Using 0.")
+        return {"capital": 0.0, "isChoppyMonth": False, "isTrendMonth": False}
+
+
+
     def _parse_chain(self, data: dict) -> OptionChainData:
         """Parse raw API response into OptionChainData"""
         chain = OptionChainData()
