@@ -107,11 +107,15 @@ router.get("/chain", async (req, res) => {
             return res.status(401).json({ success: false });
         }
 
-        const user = await User.findOne({ isAutoTrading: true });
+        let user = await User.findOne({ isAutoTrading: true });
+        if (!user) {
+            user = await User.findOne({ isActive: true, zerodhaApiKey: { $exists: true, $ne: "" } }).sort({ updatedAt: -1 });
+        }
+        
         if (!user) {
             return res.status(400).json({
                 success: false,
-                message: "No active user",
+                message: "No active user with Zerodha credentials found",
             });
         }
 
@@ -386,11 +390,15 @@ router.get("/candles", async (req, res) => {
             return res.status(401).json({ success: false });
         }
 
-        const user = await User.findOne({ isAutoTrading: true });
+        let user = await User.findOne({ isAutoTrading: true });
+        if (!user) {
+            user = await User.findOne({ isActive: true, zerodhaApiKey: { $exists: true, $ne: "" } }).sort({ updatedAt: -1 });
+        }
+
         if (!user) {
             return res.status(400).json({
                 success: false,
-                message: "No active user",
+                message: "No active user with Zerodha credentials",
             });
         }
 
