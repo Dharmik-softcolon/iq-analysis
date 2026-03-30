@@ -576,8 +576,10 @@ class ZerodhaService {
             const pePriceChg = current.peLTP - prev.peLTP;
 
             // Weighted premium change (OI × price change → premium flow)
-            callPremChg += cePriceChg * (current.ceOI || 1);
-            putPremChg  += pePriceChg * (current.peOI || 1);
+            // Only count strikes with real OI — zero-OI strikes have stale/zero prices
+            // and would pollute the metric with spurious price ticks.
+            if (current.ceOI > 0) callPremChg += cePriceChg * current.ceOI;
+            if (current.peOI > 0) putPremChg  += pePriceChg * current.peOI;
 
             // Convert OI lots → Crore
             const ceOIChgCr = this._lotsToCr(ceOIChg, spot);
@@ -647,14 +649,18 @@ class ZerodhaService {
                 else                 luOIChg += abs;        // Call LU = Bearish
             }
 
-            // ── Put side (directional meaning inverted) ───────────────────────
+            // ── Put side (directional meaning inverted from calls) ────────────────
+            // Put OI↑ + Price↑ = Put Long Buildup  = Bearish  → sbOIChg ✅
+            // Put OI↑ + Price↓ = Put Short Buildup = Bullish  → lbOIChg ✅
+            // Put OI↓ + Price↓ = Put Long Unwind   = Bullish  → scOIChg (totalBullishOI) ✅
+            // Put OI↓ + Price↑ = Put Short Cover   = Bearish  → luOIChg (totalBearishOI) ✅
             if (peOIChgCr > 0) {
-                if (pePriceChg >= 0) sbOIChg += peOIChgCr; // Put LB = Bearish
-                else                 lbOIChg += peOIChgCr; // Put SB = Bullish
+                if (pePriceChg >= 0) sbOIChg += peOIChgCr; // Put LB → Bearish
+                else                 lbOIChg += peOIChgCr; // Put SB → Bullish
             } else {
                 const abs = Math.abs(peOIChgCr);
-                if (pePriceChg < 0)  scOIChg += abs;       // Put SC = Bearish
-                else                 luOIChg += abs;       // Put LU = Bullish
+                if (pePriceChg < 0)  scOIChg += abs;       // Put Long Unwind   → Bullish
+                else                 luOIChg += abs;       // Put Short Cover   → Bearish
             }
         });
 

@@ -15,7 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 const RISK_FREE_RATE = 0.065;          // India 91-day T-bill rate (~6.5% as decimal)
 const TRADING_DAYS_PER_YEAR = 252;
-const IV_SOLVER_TOLERANCE = 1e-6;      // Convergence tolerance for Newton-Raphson
+const IV_SOLVER_TOLERANCE = 0.01;      // Convergence tolerance for Newton-Raphson (₹0.01 = 1 paisa)
 const IV_SOLVER_MAX_ITER = 100;        // Safety cap on iterations
 const IV_INITIAL_GUESS = 0.25;         // 25% starting vol — near NIFTY historical avg
 const IV_MIN = 0.001;                  // Floor: 0.1% — avoid division by zero
@@ -30,7 +30,6 @@ function normCDF(x) {
     if (x === 0) return 0.5;
 
     const sign = x > 0 ? 1 : -1;
-    const z = Math.abs(x) / Math.SQRT2;
 
     // Horner-form polynomial coefficients (Abramowitz & Stegun 7.1.26)
     const t = 1 / (1 + 0.3275911 * Math.abs(x));
