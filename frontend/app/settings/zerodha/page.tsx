@@ -22,7 +22,7 @@ export default function ZerodhaSetupPage() {
         const userStr = localStorage.getItem("whalehq_user");
         if (userStr) {
             const user = JSON.parse(userStr);
-            setUserId(user.id || "");
+            setUserId(user.id || user._id || "");
             
             // If they already have an API key saved, fetch user details to get the key and rebuild login URL
             if (user.hasZerodha) {

@@ -145,7 +145,18 @@ router.get("/me", async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.userId).select("-password");
 
-        res.json({ success: true, user });
+        res.json({
+            success: true,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                capital: user.capital,
+                isAutoTrading: user.isAutoTrading,
+                hasZerodha: !!user.zerodhaApiKey,
+                isZerodhaConnected: !!(user.tokenExpiry && new Date(user.tokenExpiry) > new Date()),
+            }
+        });
     } catch (err) {
         res.status(401).json({ success: false, message: "Invalid token" });
     }
