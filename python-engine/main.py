@@ -108,6 +108,17 @@ class WhaleHQEngine:
             f"Trend={startup_config['isTrendMonth']}"
         )
 
+        # ── Step 0.5: Fetch Initial Expiry Data ───────
+        logger.info("[Startup] Fetching initial market data for exact expiry...")
+        initial_chain = None
+        while not initial_chain:
+            initial_chain = self.data_fetcher.fetch_chain_data()
+            if initial_chain and initial_chain.expiry_date:
+                self.expiry_manager.set_expiry(initial_chain.expiry_date, initial_chain.dte)
+                break
+            logger.info("[Startup] Waiting 10s for initial market data...")
+            time.sleep(10)
+
         session_info = self.expiry_manager.get_session_info()
         self.telegram.send_system_startup(
             capital=real_capital,
@@ -151,9 +162,8 @@ class WhaleHQEngine:
                 chain.nifty_vwap = vwap
 
                 # ── Step 5: Update Expiry Info ─────
+                self.expiry_manager.set_expiry(chain.expiry_date, chain.dte)
                 session_info = self.expiry_manager.get_session_info()
-                chain.dte = session_info["dte"]
-                chain.expiry_date = session_info["expiry_date"]
 
                 logger.info(
                     f"DTE: {chain.dte} | "
