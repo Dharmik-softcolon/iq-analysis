@@ -27,6 +27,16 @@ export interface SystemState {
     niftyLTP: number;
     pcr: number;
     dte: number;
+    // Buildup fields from NativeEngine
+    dominantBuildup?: string;
+    iv?: number;
+    ivp?: number;
+    lbOIChg?: number;
+    sbOIChg?: number;
+    scOIChg?: number;
+    luOIChg?: number;
+    totalBullishOI?: number;
+    totalBearishOI?: number;
 }
 
 export interface Trade {

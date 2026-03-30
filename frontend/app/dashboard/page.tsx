@@ -16,6 +16,7 @@ import PnLChart from "@/components/PnLChart";
 import AlertPanel from "@/components/AlertPanel";
 import TopBarIndices from "@/components/TopBarIndices";
 import AvailableMargin from "@/components/AvailableMargin";
+import BuildupPanel from "@/components/BuildupPanel";
 
 const defaultState: SystemState = {
     timestamp: "",
@@ -225,8 +226,19 @@ export default function DashboardPage() {
                             dailyPnL={state.dailyPnL}
                             tradesToday={state.tradesToday}
                         />
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
                             <IAEScoreboard score={state.iaeScore} breakdown={state.iaeBreakdown} />
+                            <BuildupPanel
+                                dominantBuildup={state.dominantBuildup}
+                                iv={state.iv}
+                                ivp={state.ivp}
+                                lbOIChg={state.lbOIChg}
+                                sbOIChg={state.sbOIChg}
+                                scOIChg={state.scOIChg}
+                                luOIChg={state.luOIChg}
+                                totalBullishOI={state.totalBullishOI}
+                                totalBearishOI={state.totalBearishOI}
+                            />
                             <SystemControls isAutoTrading={user?.isAutoTrading || false} capital={user?.capital || 0} isChoppyMonth={user?.isChoppyMonth} isTrendMonth={user?.isTrendMonth} onUpdate={loadData} />
                         </div>
                     </div>
