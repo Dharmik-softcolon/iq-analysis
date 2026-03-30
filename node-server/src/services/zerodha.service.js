@@ -148,6 +148,12 @@ class ZerodhaService {
 
         // ── 4. Time-to-expiry for Black-Scholes ──────────────────────────────
         const T = timeToExpiry(chainMeta.expiry);
+        const dte_days = (T * 365).toFixed(3);
+        const atmQ = rawQuotes[chainMeta.atmStrike];
+        logger.info(
+            `[NativeEngine] T=${dte_days}d | expiry=${chainMeta.expiry} | ` +
+            `ATM ${chainMeta.atmStrike}: CE=${atmQ?.ceLTP} PE=${atmQ?.peLTP}`
+        );
 
         // ── 5. Compute IV per strike (Black-Scholes) ─────────────────────────
         const ivMap = this._computeIVForStrikes(
@@ -157,6 +163,10 @@ class ZerodhaService {
         // ── 6. Average IV (ATM ± ATM_IV_RANGE strikes) ───────────────────────
         const atmIVData = this._computeATMIV(
             ivMap, chainMeta.atmStrike
+        );
+        logger.info(
+            `[NativeEngine] ATM IV: CE=${ivMap[chainMeta.atmStrike]?.ceIV} ` +
+            `PE=${ivMap[chainMeta.atmStrike]?.peIV} | avg=${atmIVData.ivAvg}`
         );
 
         // ── 7. IVP from MongoDB history ───────────────────────────────────────

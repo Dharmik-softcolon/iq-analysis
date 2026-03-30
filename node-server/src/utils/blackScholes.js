@@ -144,8 +144,11 @@ function impliedVolatility(marketPrice, S, K, T, r = RISK_FREE_RATE, type = "CE"
     const finalPrice = blackScholesPrice(S, K, T, r, sigma, type);
     const error = Math.abs(finalPrice - marketPrice);
 
-    // Reject if it didn't converge close enough (tolerance: ₹0.50)
-    if (error > 0.5) return null;
+    // Reject if it didn't converge close enough.
+    // Use a percentage-based tolerance (5% of market price, min ₹0.50)
+    // so that cheap OTM options (e.g. ₹2) are not unfairly rejected.
+    const tolerance = Math.max(0.5, marketPrice * 0.05);
+    if (error > tolerance) return null;
 
     return parseFloat((sigma * 100).toFixed(4)); // Returns as PERCENTAGE
 }
@@ -158,17 +161,23 @@ function impliedVolatility(marketPrice, S, K, T, r = RISK_FREE_RATE, type = "CE"
 // Uses calendar days / 365 (standard for index options).
 // ─────────────────────────────────────────────────────────────────────────────
 function timeToExpiry(expiryDateStr) {
-    const now     = new Date();
-    const expiry  = new Date(expiryDateStr);
+    const now = new Date();
 
-    // Set expiry to 15:30 IST (market close)
-    expiry.setHours(15, 30, 0, 0);
+    // Parse expiry date string as YYYY-MM-DD
+    const [year, month, day] = expiryDateStr.split('-').map(Number);
 
-    const msLeft  = expiry - now;
+    // NSE market closes at 15:30 IST = 10:00:00 UTC
+    // Construct correct UTC time directly to avoid local timezone issues
+    // IST = UTC + 5:30, so 15:30 IST = 10:00 UTC
+    const expiry = new Date(Date.UTC(year, month - 1, day, 10, 0, 0, 0));
+
+    const msLeft   = expiry - now;
     const daysLeft = msLeft / (1000 * 60 * 60 * 24);
 
-    // Always at least 0.001 days to avoid T=0 singularity
-    return Math.max(0.001, daysLeft / 365);
+    // Minimum 15 minutes (to avoid T≈0 singularity at/after market close)
+    // 15 min / (365 * 24 * 60) = 0.0000285 years
+    const minT = 15 / (365 * 24 * 60);
+    return Math.max(minT, daysLeft / 365);
 }
 
 
