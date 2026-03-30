@@ -124,47 +124,48 @@ async function _syncFromSensibull() {
 
     logger.info(`[IVSync] Sensibull: ${fetchedRecords.length} IV records received`);
 
-    // Find missing dates in DB
-    const allDates    = fetchedRecords.map((r) => r.date);
-    const existingDocs = await NiftyIV.find(
-        { date: { $in: allDates } },
-        { date: 1, _id: 0 }
-    ).lean();
-    const existingSet  = new Set(existingDocs.map((d) => d.date));
-
-    const toInsert = fetchedRecords.filter((r) => !existingSet.has(r.date));
-
-    if (toInsert.length === 0) {
-        logger.info(
-            `[IVSync] Sensibull: All ${fetchedRecords.length} dates already in DB`
-        );
-        return {
-            fetched:  fetchedRecords.length,
-            existing: existingSet.size,
-            inserted: 0,
-            skipped:  fetchedRecords.length,
-        };
+    // We will use bulkWrite to strictly UPSERT all fetched records.
+    // This solves the problem of keeping yesterday's or today's IV up to date
+    // if an early-morning snapshot had already created the record,
+    // avoiding timezone/midnight boundary issues completely.
+    
+    if (fetchedRecords.length === 0) {
+        return { fetched: 0, existing: 0, inserted: 0, skipped: 0 };
     }
 
-    // Bulk insert
-    const result       = await NiftyIV.insertMany(toInsert, {
-        ordered: false, rawResult: true,
-    });
-    const insertedCount = result.insertedCount ?? toInsert.length;
+    const bulkOps = fetchedRecords.map((r) => ({
+        updateOne: {
+            filter: { date: r.date },
+            update: { $set: r },
+            upsert: true
+        }
+    }));
+
+    let insertedCount = 0;
+    let matchedCount = 0;
+    
+    try {
+        const result = await NiftyIV.bulkWrite(bulkOps, { ordered: false });
+        insertedCount = result.upsertedCount || 0;
+        matchedCount = result.matchedCount || 0;
+    } catch (err) {
+        logger.error(`[IVSync] bulkWrite error: ${err.message}`);
+    }
 
     logger.info(
         `[IVSync] ✅ Sensibull sync done | ` +
-        `Inserted: ${insertedCount} | ` +
-        `Range: ${toInsert[0]?.date} → ${toInsert[toInsert.length - 1]?.date}`
+        `Upserted: ${insertedCount} | ` +
+        `Matched/Updated: ${matchedCount} | ` +
+        `Total fetched: ${fetchedRecords.length}`
     );
 
     _bustIVPCache();
 
     return {
         fetched:  fetchedRecords.length,
-        existing: existingSet.size,
+        existing: matchedCount,
         inserted: insertedCount,
-        skipped:  existingSet.size,
+        skipped:  0, // We no longer skip
     };
 }
 
