@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import {
-    BarChart,
+    ComposedChart,
+    Line,
     Bar,
     XAxis,
     YAxis,
@@ -18,18 +19,28 @@ interface Props {
 }
 
 export default function BuildupChart({ data = [] }: Props) {
-    // Process data: Make bearish values negative to stack downwards
+    // Process data: Make bearish values negative to stack downwards and calculate running totals
     const chartData = useMemo(() => {
-        return data.map((tick) => ({
-            time: tick.time,
-            LB: tick.lb,           // Positive (Bullish)
-            SC: tick.sc,           // Positive (Bullish)
-            SB: -Math.abs(tick.sb), // Negative (Bearish)
-            LU: -Math.abs(tick.lu), // Negative (Bearish)
-            totalBullish: tick.totalBullish,
-            totalBearish: tick.totalBearish,
-            ivp: tick.ivp
-        }));
+        let runningBull = 0;
+        let runningBear = 0;
+
+        return data.map((tick) => {
+            runningBull += tick.totalBullish;
+            runningBear += tick.totalBearish;
+
+            return {
+                time: tick.time,
+                LB: tick.lb,           // Positive (Bullish)
+                SC: tick.sc,           // Positive (Bullish)
+                SB: -Math.abs(tick.sb), // Negative (Bearish)
+                LU: -Math.abs(tick.lu), // Negative (Bearish)
+                totalBullish: tick.totalBullish,
+                totalBearish: tick.totalBearish,
+                runningBull: Number(runningBull.toFixed(2)),
+                runningBear: Number(runningBear.toFixed(2)),
+                ivp: tick.ivp
+            };
+        });
     }, [data]);
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -76,9 +87,18 @@ export default function BuildupChart({ data = [] }: Props) {
                         </div>
                     </div>
                     
-                    <div className="mt-3 pt-2 flex justify-between text-[11px] font-bold" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                        <span style={{ color: "var(--green)" }}>Total Bull: {raw.totalBullish.toFixed(2)}</span>
-                        <span style={{ color: "var(--red)" }}>Total Bear: {raw.totalBearish.toFixed(2)}</span>
+                    <div className="mt-3 pt-2 flex flex-col gap-1 text-[11px] font-bold" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                        <div className="flex justify-between items-center text-[10px] uppercase text-[var(--text-muted)] mb-0.5">
+                            <span>Running Total</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span style={{ color: "var(--green)" }}>Total Bull:</span>
+                            <span style={{ color: "var(--green)" }}>{raw.runningBull.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span style={{ color: "var(--red)" }}>Total Bear:</span>
+                            <span style={{ color: "var(--red)" }}>{raw.runningBear.toFixed(2)}</span>
+                        </div>
                     </div>
                 </div>
             );
@@ -117,7 +137,7 @@ export default function BuildupChart({ data = [] }: Props) {
                 </div>
             ) : (
                 <ResponsiveContainer width="100%" height={320}>
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                    <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
                         <CartesianGrid
                             strokeDasharray="4 4"
                             stroke="var(--border-subtle)"
@@ -132,6 +152,7 @@ export default function BuildupChart({ data = [] }: Props) {
                             minTickGap={30}
                         />
                         <YAxis
+                            yAxisId="left"
                             stroke="var(--text-muted)"
                             tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--text-muted)" }}
                             axisLine={{ stroke: "var(--border-base)" }}
@@ -139,22 +160,36 @@ export default function BuildupChart({ data = [] }: Props) {
                             width={40}
                             tickFormatter={(v) => Math.abs(v).toString()}
                         />
+                        <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            stroke="var(--text-muted)"
+                            tick={{ fontSize: 10, fontFamily: "var(--font-mono)", fill: "var(--text-muted)" }}
+                            axisLine={{ stroke: "var(--border-base)" }}
+                            tickLine={false}
+                            width={40}
+                        />
+
                         <Tooltip 
                             content={<CustomTooltip />} 
                             cursor={{ fill: "var(--bg-elevated)", opacity: 0.4 }} 
                         />
                         
                         {/* Bi-Directional Zero Line */}
-                        <ReferenceLine y={0} stroke="var(--text-primary)" strokeOpacity={0.5} strokeWidth={1} />
+                        <ReferenceLine y={0} yAxisId="left" stroke="var(--text-primary)" strokeOpacity={0.5} strokeWidth={1} />
                         
-                        {/* Bullish Stack (Upwards) */}
-                        <Bar dataKey="LB" stackId="bull" fill="var(--green)" />
-                        <Bar dataKey="SC" stackId="bull" fill="var(--blue)" />
+                        {/* Bullish Stack (Upwards) - Reduced Opacity */}
+                        <Bar yAxisId="left" dataKey="LB" stackId="bull" fill="var(--green)" fillOpacity={0.5} stroke="var(--green)" strokeWidth={1} strokeOpacity={0.2} />
+                        <Bar yAxisId="left" dataKey="SC" stackId="bull" fill="var(--blue)" fillOpacity={0.5} stroke="var(--blue)" strokeWidth={1} strokeOpacity={0.2} />
                         
-                        {/* Bearish Stack (Downwards) */}
-                        <Bar dataKey="SB" stackId="bear" fill="var(--red)" />
-                        <Bar dataKey="LU" stackId="bear" fill="var(--yellow)" />
-                    </BarChart>
+                        {/* Bearish Stack (Downwards) - Reduced Opacity */}
+                        <Bar yAxisId="left" dataKey="SB" stackId="bear" fill="var(--red)" fillOpacity={0.5} stroke="var(--red)" strokeWidth={1} strokeOpacity={0.2} />
+                        <Bar yAxisId="left" dataKey="LU" stackId="bear" fill="var(--yellow)" fillOpacity={0.5} stroke="var(--yellow)" strokeWidth={1} strokeOpacity={0.2} />
+                        
+                        {/* Running Total Lines */}
+                        <Line yAxisId="right" type="monotone" dataKey="runningBull" stroke="var(--green)" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "var(--green)" }} />
+                        <Line yAxisId="right" type="monotone" dataKey="runningBear" stroke="var(--red)" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "var(--red)" }} />
+                    </ComposedChart>
                 </ResponsiveContainer>
             )}
         </div>
