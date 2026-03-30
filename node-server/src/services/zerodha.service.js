@@ -68,6 +68,10 @@ class ZerodhaService {
         this._ivHistory     = null;
         this._ivHistoryTs   = 0;
         this._ivHistoryTTL  = 4 * 60 * 60 * 1000;  // Re-fetch every 4 hours
+
+        // ── Last known good IV (fallback when solver fails on expiry day) ──────
+        this._lastValidIV   = null;   // e.g. 15.3 (percentage)
+        this._lastValidIVDate = null; // "YYYY-MM-DD" — reset each day
     }
 
 
@@ -164,13 +168,37 @@ class ZerodhaService {
         const atmIVData = this._computeATMIV(
             ivMap, chainMeta.atmStrike
         );
+
+        // ── 6b. Cached IV fallback — if solver failed this tick, use last good IV
+        const todayStr    = new Date().toISOString().split('T')[0];
+        let   ivAvgFinal  = atmIVData.ivAvg;
+
+        if (ivAvgFinal >= 1.0) {
+            // Good IV — cache it
+            this._lastValidIV     = ivAvgFinal;
+            this._lastValidIVDate = todayStr;
+        } else {
+            // Solver produced garbage — use last known good IV if from today
+            const fallbackIV = (this._lastValidIVDate === todayStr && this._lastValidIV)
+                ? this._lastValidIV : null;
+            if (fallbackIV) {
+                logger.warn(
+                    `[NativeEngine] IV solver got ${ivAvgFinal}% (bad) — ` +
+                    `using cached IV: ${fallbackIV}%`
+                );
+                ivAvgFinal = fallbackIV;
+            } else {
+                logger.warn(`[NativeEngine] IV solver failed, no cached IV available yet`);
+            }
+        }
+
         logger.info(
             `[NativeEngine] ATM IV: CE=${ivMap[chainMeta.atmStrike]?.ceIV} ` +
-            `PE=${ivMap[chainMeta.atmStrike]?.peIV} | avg=${atmIVData.ivAvg}`
+            `PE=${ivMap[chainMeta.atmStrike]?.peIV} | avg=${atmIVData.ivAvg} | final=${ivAvgFinal}`
         );
 
         // ── 7. IVP from MongoDB history ───────────────────────────────────────
-        const ivp = await this._getIVP(atmIVData.ivAvg);
+        const ivp = await this._getIVP(ivAvgFinal);
 
         // ── 8. OI delta vs previous tick ─────────────────────────────────────
         const oiDelta = this._calculateOIDelta(rawQuotes, chainMeta.expiry, spot.ltp);
@@ -230,7 +258,7 @@ class ZerodhaService {
             itmPCR:             pcrData.itmPCR,
 
             // IV & IVP (native Black-Scholes)
-            ivAvg:              atmIVData.ivAvg,
+            ivAvg:              ivAvgFinal,
             ivp,
             atmCEIV:            ivMap[chainMeta.atmStrike]?.ceIV || 0,
             atmPEIV:            ivMap[chainMeta.atmStrike]?.peIV || 0,
@@ -474,10 +502,13 @@ class ZerodhaService {
 
         Object.entries(rawQuotes).forEach(([strikeStr, data]) => {
             const strike = parseInt(strikeStr, 10);
-            const ceIV   = (data.ceLTP > 0.1)
+
+            // Minimum LTP of ₹0.50 — options below this are near-worthless far-OTM
+            // strikes whose prices are stale/illiquid and produce garbage IVs.
+            const ceIV   = (data.ceLTP >= 0.5)
                 ? impliedVolatility(data.ceLTP, spot, strike, T, RISK_FREE_RATE, "CE")
                 : null;
-            const peIV   = (data.peLTP > 0.1)
+            const peIV   = (data.peLTP >= 0.5)
                 ? impliedVolatility(data.peLTP, spot, strike, T, RISK_FREE_RATE, "PE")
                 : null;
 
@@ -522,7 +553,9 @@ class ZerodhaService {
     // ═════════════════════════════════════════════════════════════════════════
 
     async _getIVP(currentIV) {
-        if (currentIV <= 0) return 50;
+        // If IV is below 1%, the solver almost certainly failed (near-expiry numerical issues
+        // or stale OTM prices). Return neutral 50 instead of IVP=0 which misleads the engine.
+        if (currentIV <= 0 || currentIV < 1.0) return 50;
 
         const now = Date.now();
 
