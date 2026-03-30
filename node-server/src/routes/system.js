@@ -413,9 +413,11 @@ router.get("/candles", async (req, res) => {
         const kite = zerodhaService.getKite(user._id);
 
         // Get today's 1-min candles for NIFTY 50
+        // 09:15 IST = 03:45 UTC  (IST = UTC+5:30)
         const today = new Date();
-        const fromDate = new Date(today);
-        fromDate.setHours(9, 15, 0, 0);
+        const todayIST = today.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+        const [cy, cm, cd] = todayIST.split("-").map(Number);
+        const fromDate = new Date(Date.UTC(cy, cm - 1, cd, 3, 45, 0, 0));   // 09:15 IST
 
         const candles = await kite.getHistoricalData(
             "256265", // NIFTY 50 instrument token

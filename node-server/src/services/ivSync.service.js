@@ -237,18 +237,19 @@ async function _syncTodayFromKite(dateStr) {
             logger.warn(`[IVSync] Could not fetch NIFTY OHLC: ${niftyErr.message}`);
         }
 
-        // Insert today's record
+        // Upsert today's record — use $set (not $setOnInsert) so we can
+        // overwrite stale data if the record already exists with a wrong IV.
         await NiftyIV.findOneAndUpdate(
             { date: dateStr },
             {
-                $setOnInsert: {
-                    date:  dateStr,
+                $set: {
                     iv:    ivValue,
                     open:  niftyOpen  || undefined,
                     high:  niftyHigh  || undefined,
                     low:   niftyLow   || undefined,
                     close: niftyClose || undefined,
                 },
+                $setOnInsert: { date: dateStr },   // only set date on create
             },
             { upsert: true, new: true }
         );
