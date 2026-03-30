@@ -19,14 +19,23 @@ router.post("/state", async (req, res) => {
 
         const stateData = req.body;
 
-        // Store latest state globally
-        global.latestSystemState = stateData;
+        // Create the individual datapoint
+        const newBuildupPoint = {
+            time: (stateData.timestamp || "").substring(11, 16), // "HH:mm" from ISO string
+            lb: stateData.lbOIChg || 0,
+            sb: stateData.sbOIChg || 0,
+            sc: stateData.scOIChg || 0,
+            lu: stateData.luOIChg || 0,
+            totalBullish: stateData.totalBullishOI || 0,
+            totalBearish: stateData.totalBearishOI || 0,
+            ivp: stateData.ivp || 0
+        };
 
         // Update session in DB
         const Session = require("../models/Session");
         const today = new Date().toISOString().split("T")[0];
 
-        await Session.findOneAndUpdate(
+        const updatedSession = await Session.findOneAndUpdate(
             { date: today },
             {
                 $set: {
@@ -39,9 +48,18 @@ router.post("/state", async (req, res) => {
                     dailyPnL: stateData.dailyPnL,
                     lastUpdated: new Date(),
                 },
+                $push: {
+                    buildupHistory: newBuildupPoint
+                }
             },
             { upsert: true, new: true }
         );
+
+        // Attach full history to state before broadcast so new clients receive it immediately
+        stateData.buildupHistory = updatedSession.buildupHistory || [];
+
+        // Store latest state globally
+        global.latestSystemState = stateData;
 
         // Broadcast to all UI clients
         getIO().emit("system:state", stateData);
@@ -66,6 +84,34 @@ router.get("/state", authMiddleware, async (req, res) => {
                 direction: "NO_TRADE",
             },
         });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// GET /api/system/sessions/dates
+// Returns a list of all distinct dates in the Session collection, descending
+router.get("/sessions/dates", authMiddleware, async (req, res) => {
+    try {
+        const Session = require("../models/Session");
+        const sessions = await Session.find({}).sort({ date: -1 }).select("date");
+        const dates = sessions.map(s => s.date);
+        res.json({ success: true, dates });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// GET /api/system/sessions/:date/buildup
+// Returns the buildupHistory array for a specific day
+router.get("/sessions/:date/buildup", authMiddleware, async (req, res) => {
+    try {
+        const Session = require("../models/Session");
+        const session = await Session.findOne({ date: req.params.date }).select("buildupHistory");
+        if (!session) {
+            return res.status(404).json({ success: false, message: "Session not found for date" });
+        }
+        res.json({ success: true, buildupHistory: session.buildupHistory || [] });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

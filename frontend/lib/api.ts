@@ -51,6 +51,9 @@ export const systemAPI = {
         api.put("/system/settings", settings),
     // Returns real Zerodha available margin and auto-syncs capital if needed
     capitalSync: () => api.get("/system/capital-sync"),
+    // Historical Data Endpoints
+    getAvailableDates: () => api.get("/system/sessions/dates"),
+    getHistoricalBuildup: (date: string) => api.get(`/system/sessions/${date}/buildup`),
 };
 
 // Trade APIs

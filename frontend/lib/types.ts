@@ -13,6 +13,17 @@ export interface IAEBreakdown {
     tre: number;
 }
 
+export interface BuildupTick {
+    time: string;
+    lb: number;
+    sb: number;
+    sc: number;
+    lu: number;
+    totalBullish: number;
+    totalBearish: number;
+    ivp: number;
+}
+
 export interface SystemState {
     timestamp: string;
     systemMode: SystemMode;
@@ -37,6 +48,7 @@ export interface SystemState {
     luOIChg?: number;
     totalBullishOI?: number;
     totalBearishOI?: number;
+    buildupHistory?: BuildupTick[];
 }
 
 export interface Trade {

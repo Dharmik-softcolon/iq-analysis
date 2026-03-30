@@ -17,6 +17,7 @@ import AlertPanel from "@/components/AlertPanel";
 import TopBarIndices from "@/components/TopBarIndices";
 import AvailableMargin from "@/components/AvailableMargin";
 import BuildupPanel from "@/components/BuildupPanel";
+import HistoricalBuildupView from "@/components/HistoricalBuildupView";
 
 const defaultState: SystemState = {
     timestamp: "",
@@ -41,6 +42,7 @@ const TABS = [
     { id: "positions",  label: "Positions" },
     { id: "alerts",     label: "Alerts" },
     { id: "curve",      label: "P&L Curve" },
+    { id: "oibuildup",  label: "OI Buildup" },
 ] as const;
 
 type TabId = typeof TABS[number]["id"];
@@ -261,7 +263,13 @@ export default function DashboardPage() {
                 )}
 
                 {activeTab === "curve" && (
-                    <PnLChart trades={tradeHistory} />
+                    <div className="space-y-5">
+                        <PnLChart trades={tradeHistory} />
+                    </div>
+                )}
+
+                {activeTab === "oibuildup" && (
+                    <HistoricalBuildupView liveData={state.buildupHistory || []} />
                 )}
             </main>
         </div>

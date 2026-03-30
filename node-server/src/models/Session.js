@@ -17,6 +17,20 @@ const SessionSchema = new mongoose.Schema(
         niftyClose: { type: Number },
         lastUpdated: { type: Date, default: Date.now },
 
+        // ── Buildup History: tracking minute-by-minute momentum ──
+        buildupHistory: [
+            {
+                time: String,
+                lb: { type: Number, default: 0 },
+                sb: { type: Number, default: 0 },
+                sc: { type: Number, default: 0 },
+                lu: { type: Number, default: 0 },
+                totalBullish: { type: Number, default: 0 },
+                totalBearish: { type: Number, default: 0 },
+                ivp: { type: Number, default: 0 }
+            }
+        ],
+
         // ── OI Snapshot: persists previous-tick OI data across server restarts ──
         // Map of strikePrice (string key) → previous tick OI/LTP values.
         // Re-hydrated into in-memory OI store on zerodha.service startup.
