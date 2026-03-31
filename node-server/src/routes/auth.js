@@ -154,6 +154,7 @@ router.get("/me", async (req, res) => {
                 capital: user.capital,
                 isAutoTrading: user.isAutoTrading,
                 hasZerodha: !!user.zerodhaApiKey,
+                zerodhaApiKey: user.zerodhaApiKey,
                 isZerodhaConnected: !!(user.tokenExpiry && new Date(user.tokenExpiry) > new Date()),
             }
         });

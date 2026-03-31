@@ -29,13 +29,19 @@ export default function ZerodhaSetupPage() {
                 authAPI.getMe().then((res) => {
                     const fullUser = res.data?.user;
                     if (fullUser?.zerodhaApiKey) {
-                        setLoginUrl(`https://kite.trade/connect/login?v=3&api_key=${fullUser.zerodhaApiKey}`);
+                        const generatedLoginUrl = `https://kite.trade/connect/login?v=3&api_key=${fullUser.zerodhaApiKey}`;
+                        setLoginUrl(generatedLoginUrl);
                         setStep("login");
+
+                        // If NOT returning from a Kite redirect, auto-redirect to Kite Login page
+                        if (!urlRequestToken) {
+                            window.location.href = generatedLoginUrl;
+                        }
                     }
                 }).catch(console.error);
             }
         }
-    }, []);
+    }, [urlRequestToken]);
 
     // Effect to automatically process the request_token from URL redirect
     useEffect(() => {
@@ -47,6 +53,10 @@ export default function ZerodhaSetupPage() {
                 try {
                     await authAPI.zerodhaCallback(userId, urlRequestToken);
                     setStep("done");
+                    // Auto-redirect to dashboard after a short delay to show success
+                    setTimeout(() => {
+                        window.location.href = "/dashboard";
+                    }, 1500);
                 } catch (err: any) {
                     setError(err.response?.data?.message || "Auto-authentication failed");
                     setStep("login");
@@ -100,6 +110,10 @@ export default function ZerodhaSetupPage() {
         try {
             await authAPI.zerodhaCallback(userId, requestToken);
             setStep("done");
+            // Auto-redirect to dashboard after a short delay to show success
+            setTimeout(() => {
+                window.location.href = "/dashboard";
+            }, 1500);
         } catch (err: any) {
             setError(err.response?.data?.message || "Authentication failed");
         } finally {
