@@ -10,8 +10,31 @@ def setup_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
+    class SpamFilter(logging.Filter):
+        def filter(self, record):
+            msg = record.getMessage()
+            unwanted = [
+                "Outside market hours — sleeping",
+                "No market data — skipping tick",
+                "System SHUTDOWN — no trading",
+                "TICK:",
+                "DTE:",
+                "Stay flat condition — no trading",
+                "BALANCE + IAE < 6 — standby",
+                "No direction confirmed — no trade",
+                "reached — standby",
+                "In position (",
+                "Fetching NFO instruments",
+                "Starting market data computation",
+                "Waiting 10s for initial",
+                "Waiting 60s for capital",
+                "Fetching real trading capital"
+            ]
+            return not any(u in msg for u in unwanted)
+
     # Console handler
     console = logging.StreamHandler(sys.stdout)
+    console.addFilter(SpamFilter())
     console.setLevel(logging.INFO)
     console.setFormatter(logging.Formatter(
         "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
